@@ -110,7 +110,7 @@ def get_text_under_key_to_page_end(
     return hits
 
 
-def detect_table_regions_for_key_hits(filtered_keys, ocr_key_hit, value_matched, images):
+def detect_table_regions_for_key_hits(filtered_keys, ocr_key_hit, value_matched, layout_model, images):
     """
     Given a list of OCR key hits and value-matched attributes, detect layout tables
     on the relevant pages and return table bounding boxes grouped by relative page index.
@@ -124,6 +124,9 @@ def detect_table_regions_for_key_hits(filtered_keys, ocr_key_hit, value_matched,
     Returns:
         dict: {relative_page_index (int): [table_bbox1, table_bbox2, ...]}
     """
+    # Find which pages contain these hits
+    if not filtered_keys:
+        return {}
 
     # Find which pages contain these hits
     page_indices = {item["ocr_result_index"] for item in filtered_keys}
@@ -131,7 +134,7 @@ def detect_table_regions_for_key_hits(filtered_keys, ocr_key_hit, value_matched,
     max_page = max(page_indices)
 
     logging.info(f"  → Detecting layout on pages {min_page + 1} to {max_page + 1} (0-indexed: {min_page}-{max_page})...")
-    
+
     # Run layout detection only on relevant pages
     image_subset = images[min_page : max_page + 1]
     layout_results = layout_detect(image_subset)
