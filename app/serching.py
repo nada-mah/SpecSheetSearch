@@ -1,7 +1,7 @@
 import logging
 import re
-from app.helper import generate_ocr_variants
-from app.input_handler import get_attribute_info_by_key
+from  helper import generate_ocr_variants
+from  input_handler import get_attribute_info_by_key
 
 def matches_key_value_pair(big_text: str, key: str, value) -> bool:
     """

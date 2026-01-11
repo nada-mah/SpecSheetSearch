@@ -1,30 +1,30 @@
 import os
 import logging
 import json
-from app.model_loader import get_qwen_model_path, get_yolo_model_path
-from app.input_handler import convert_pdf_with_pymupdf
-from app.ocr import get_ocr_object_per_page
-from app.generate_mouting import (
+from  model_loader import get_qwen_model_path, get_yolo_model_path
+from  input_handler import convert_pdf_with_pymupdf
+from  ocr import get_ocr_object_per_page
+from  generate_mouting import (
     build_mounting_prompt,
     get_valid_json,
     load_schema_and_derive_product_types,)
-from app.input_handler import save_final_result, merge_match_results
-from app.ocr import build_full_ocr_text, filter_ocr_key_hit_by_value_matched, filter_ocr_keys_by_regions, match_values_for_keys
-from app.serching import (
+from  input_handler import save_final_result, merge_match_results
+from  ocr import build_full_ocr_text, filter_ocr_key_hit_by_value_matched, filter_ocr_keys_by_regions, match_values_for_keys
+from  serching import (
     match_product_types_via_lookup,
     split_schema_by_product_type_match, 
     find_key_hits_from_ocr,
     refine_by_key_hits,
     refine_by_value_hits,
     refine_by_key_value_pair_matching)
-from app.table_handler import (
+from  table_handler import (
     detect_table_regions_for_key_hits,
     extract_candidate_rows_for_keys,)
-from app.generate_mouting import generate_llm_response
-from app.generate_regex import build_regex_prompt, group_schema_by_sentence_closeness, clean_guidance
+from  generate_mouting import generate_llm_response
+from  generate_regex import build_regex_prompt, group_schema_by_sentence_closeness, clean_guidance
 import hashlib
 
-def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, model, output_dir="final_result"):
+def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, model, output_dir="final_result", use_gpu=False):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     logging.info(f"📄 Processing spec sheet: {base_name}.pdf")
 
@@ -92,7 +92,8 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, mo
         lookup = get_valid_json(
             prompt=prompt,
             tokenizer=tokenizer,
-            model=model
+            model=model,
+            use_gpu=use_gpu
         )
 
         if not isinstance(lookup, dict):
@@ -145,7 +146,7 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, mo
         for g in guidance_strip:
             regex_prompt = build_regex_prompt(g)
             # ⚠️ Fix typo: 'modelq' → 'model'
-            response = generate_llm_response(regex_prompt, tokenizer, model)
+            response = generate_llm_response(regex_prompt, tokenizer, model, use_gpu)
             regex_withkey.append(response)
 
         # Merge responses into one dict

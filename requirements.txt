@@ -1,0 +1,8 @@
+argparse
+pypdfium2==4.30.0
+doclayout-yolo==0.0.4
+PaddleOCR==2.10.0
+paddlepaddle==2.6.2
+PyMuPDF
+llama-cpp-python 
+huggingface_hub

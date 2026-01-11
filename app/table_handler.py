@@ -1,6 +1,6 @@
 import logging
 from doclayout_yolo import YOLOv10
-from app.model_loader import get_yolo_model_path
+from  model_loader import get_yolo_model_path
 
 # def layout_detect(model,images):
 #     det_res = model.predict(

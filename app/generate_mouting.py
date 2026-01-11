@@ -1,8 +1,8 @@
 import logging
 import re
 import json
-from app.input_handler import load_attribute_schema
-from app.model_loader import get_llm_instance
+from  input_handler import load_attribute_schema
+from  model_loader import get_llm_instance
 
 def build_mounting_prompt(product_type_set):
     prompt = f'''
@@ -114,7 +114,7 @@ def fix_and_load_json(response_text):
         raise ValueError(f"Invalid JSON: {e}")
 
 
-def get_valid_json(prompt, tokenizer, model, initial_response=None, max_retries=3):
+def get_valid_json(prompt, tokenizer, model, initial_response=None, max_retries=3, use_gpu=False):
     """
     Validates an initial LLM response and regenerates only if necessary.
     """
@@ -126,7 +126,7 @@ def get_valid_json(prompt, tokenizer, model, initial_response=None, max_retries=
 
     for attempt in range(max_retries):
         logging.info(f"LLM JSON generation attempt {attempt + 1}/{max_retries}")
-        response = generate_llm_response(prompt, tokenizer, model)
+        response = generate_llm_response(prompt, tokenizer, model, use_gpu)
         try:
             return fix_and_load_json(response)
         except ValueError:

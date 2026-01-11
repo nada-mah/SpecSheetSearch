@@ -2,8 +2,8 @@ import argparse
 import glob
 import os
 import shutil
-from app.process_lighting_spec_sheet import process_lighting_spec_sheet
-from app.model_loader import _ocr_instance, tokenizer, model  # Fixed: was 'modelq'
+from process_lighting_spec_sheet import process_lighting_spec_sheet
+from model_loader import _ocr_instance
 
 def main():
     parser = argparse.ArgumentParser(description="Extract structured lighting specs from PDF spec sheets.")
@@ -50,9 +50,8 @@ def main():
                 pdf_path,
                 schema_path,
                 _ocr_instance,
-                tokenizer,
-                model,  # ← Fixed variable name
-                output_dir=output_dir
+                output_dir=output_dir,
+                use_gpu=args.gpu
             )
 
             filename = os.path.basename(pdf_path)
