@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Global variable to hold the OCR instance
 _ocr_instance = None
-
+llm = None
 def get_yolo_model_path():
     """
     Returns the path to the YOLO model, downloading it if necessary.

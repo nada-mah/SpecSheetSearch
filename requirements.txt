@@ -6,3 +6,4 @@ paddlepaddle==3.0.0
 PyMuPDF
 llama-cpp-python 
 huggingface_hub
+langchain==0.3.27
