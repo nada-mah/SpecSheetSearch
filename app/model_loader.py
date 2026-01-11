@@ -1,6 +1,7 @@
 import os
 import logging
 from huggingface_hub import hf_hub_download
+from llama_cpp import Llama
 from paddleocr import PaddleOCR
 from config import (
     LLM_FILENAME, LLM_REPO_ID,
