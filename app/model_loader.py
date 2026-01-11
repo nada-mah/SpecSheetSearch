@@ -94,7 +94,7 @@ def get_llm_instance(use_gpu=False):
         model_path=llm_path,
         n_gpu_layers=n_gpu,         # Offload all possible layers to the GPU
         n_batch=512,             # Process up to 512 tokens in parallel
-        n_ctx=4096,             # Context window size
+        n_ctx=8192,             # Context window size
         verbose=False            # Set to True to see detailed loading information
         )
     return llm
