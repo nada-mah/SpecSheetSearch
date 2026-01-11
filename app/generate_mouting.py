@@ -45,7 +45,8 @@ Each value must be either:
 Do not include explanations, comments, markdown, or any text outside the JSON object.
 Return ONLY valid JSON.
 Do not include explanations, markdown, or comments.
-Use double quotes for all keys and string values.
+Use double quotes for all keys and string values. 
+/no_think
 '''
     return prompt
 
@@ -113,24 +114,38 @@ def fix_and_load_json(response_text):
         logging.warning(f"Failed to parse JSON: {e}")
         raise ValueError(f"Invalid JSON: {e}")
 
+THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+
+def remove_think_block(text: str) -> str:
+    if not text:
+        return text
+    return THINK_BLOCK_RE.sub("", text).strip()
 
 def get_valid_json(prompt, initial_response=None, max_retries=3, use_gpu=False):
     """
     Validates an initial LLM response and regenerates only if necessary.
+    Automatically removes <think>...</think> blocks before parsing.
     """
+
     if initial_response is not None:
         try:
-            return fix_and_load_json(initial_response)
+            cleaned = remove_think_block(initial_response)
+            return fix_and_load_json(cleaned)
         except ValueError:
             logging.info("Initial response is invalid JSON; regenerating...")
 
     for attempt in range(max_retries):
         logging.info(f"LLM JSON generation attempt {attempt + 1}/{max_retries}")
         response = generate_llm_response(prompt, use_gpu)
+
+        cleaned = remove_think_block(response)
+
         try:
-            return fix_and_load_json(response)
+            return fix_and_load_json(cleaned)
         except ValueError:
-            logging.warning(f"Attempt {attempt + 1} failed: invalid JSON. Retrying...")
+            logging.warning(
+                f"Attempt {attempt + 1} failed: invalid JSON. Retrying..."
+            )
 
     raise RuntimeError("Failed to get valid JSON after multiple attempts")
 
