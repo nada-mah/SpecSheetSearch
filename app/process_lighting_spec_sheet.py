@@ -23,6 +23,7 @@ from  table_handler import (
 from  generate_mouting import generate_llm_response
 from  generate_regex import build_regex_prompt, group_schema_by_sentence_closeness, clean_guidance
 import hashlib
+from generate_mouting import remove_think_block
 
 def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="final_result", use_gpu=False):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
@@ -144,6 +145,7 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
             regex_prompt = build_regex_prompt(g)
             # ⚠️ Fix typo: 'modelq' → 'model'
             response = generate_llm_response(regex_prompt, use_gpu)
+            response = remove_think_block(response)   
             regex_withkey.append(response)
 
         # Merge responses into one dict
