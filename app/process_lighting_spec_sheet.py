@@ -24,7 +24,7 @@ from  generate_mouting import generate_llm_response
 from  generate_regex import build_regex_prompt, group_schema_by_sentence_closeness, clean_guidance
 import hashlib
 
-def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, model, output_dir="final_result", use_gpu=False):
+def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="final_result", use_gpu=False):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     logging.info(f"📄 Processing spec sheet: {base_name}.pdf")
 
@@ -68,8 +68,7 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, mo
 
                 new_entries = get_valid_json(
                     prompt=prompt,
-                    tokenizer=tokenizer,
-                    model=model
+                    use_gpu=use_gpu
                 )
 
                 if not isinstance(new_entries, dict):
@@ -91,8 +90,6 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, mo
 
         lookup = get_valid_json(
             prompt=prompt,
-            tokenizer=tokenizer,
-            model=model,
             use_gpu=use_gpu
         )
 
@@ -146,7 +143,7 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, tokenizer, mo
         for g in guidance_strip:
             regex_prompt = build_regex_prompt(g)
             # ⚠️ Fix typo: 'modelq' → 'model'
-            response = generate_llm_response(regex_prompt, tokenizer, model, use_gpu)
+            response = generate_llm_response(regex_prompt, use_gpu)
             regex_withkey.append(response)
 
         # Merge responses into one dict

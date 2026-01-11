@@ -50,7 +50,7 @@ Use double quotes for all keys and string values.
     return prompt
 
 
-def generate_llm_response(prompt, tokenizer, model, use_gpu=False):
+def generate_llm_response(prompt, use_gpu=False):
     llm = get_llm_instance(use_gpu)
     response =  llm.create_chat_completion(
     messages=[
@@ -114,7 +114,7 @@ def fix_and_load_json(response_text):
         raise ValueError(f"Invalid JSON: {e}")
 
 
-def get_valid_json(prompt, tokenizer, model, initial_response=None, max_retries=3, use_gpu=False):
+def get_valid_json(prompt, initial_response=None, max_retries=3, use_gpu=False):
     """
     Validates an initial LLM response and regenerates only if necessary.
     """
@@ -126,7 +126,7 @@ def get_valid_json(prompt, tokenizer, model, initial_response=None, max_retries=
 
     for attempt in range(max_retries):
         logging.info(f"LLM JSON generation attempt {attempt + 1}/{max_retries}")
-        response = generate_llm_response(prompt, tokenizer, model, use_gpu)
+        response = generate_llm_response(prompt, use_gpu)
         try:
             return fix_and_load_json(response)
         except ValueError:
