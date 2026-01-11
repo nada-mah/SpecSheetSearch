@@ -77,7 +77,7 @@ def generate_llm_response(prompt, use_gpu=False):
         {"role": "user", "content": prompt},
     ],
     temperature=0.9,
-    max_tokens=0.9,
+    max_tokens=4096,
     top_p=10,
     )
     content = response["choices"][0]["message"]['content']
