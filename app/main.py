@@ -3,7 +3,7 @@ import glob
 import os
 import shutil
 from process_lighting_spec_sheet import process_lighting_spec_sheet
-from model_loader import _ocr_instance
+from model_loader import get_ocr_instance
 
 def main():
     parser = argparse.ArgumentParser(description="Extract structured lighting specs from PDF spec sheets.")
@@ -41,7 +41,7 @@ def main():
     os.makedirs(not_found_dir, exist_ok=True)
 
     print(f"📄 Found {len(pdf_paths)} PDF(s) to process.\n")
-
+    ocr_engine = get_ocr_instance()
     # Process each PDF
     for pdf_path in pdf_paths:
         try:
@@ -49,7 +49,7 @@ def main():
             is_hit = process_lighting_spec_sheet(
                 pdf_path,
                 schema_path,
-                _ocr_instance,
+                ocr_engine,
                 output_dir=output_dir,
                 use_gpu=args.gpu
             )
