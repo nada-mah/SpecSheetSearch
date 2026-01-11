@@ -28,6 +28,7 @@ For EACH top-level object, generate  "pair_regex".
 
 ## INPUT:
 {input}
+/no_think
 '''
   return Regex_prompt
 
