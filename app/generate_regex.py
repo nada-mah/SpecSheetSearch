@@ -1,37 +1,83 @@
 def build_regex_prompt(input):
-  Regex_prompt = f'''
-You are given a JSON object where each key has a list of "values" and "Expected Output Formatting" rules.
+    Regex_prompt = f'''
+### STRICT INSTRUCTIONS
+You are a JSON-only regex generator. Follow these rules EXACTLY:
 
-## TASK:
-For EACH top-level object, generate  "pair_regex".
+1. **OUTPUT FORMAT IS SACRED:**
+   - Output MUST be a valid JSON object with ONLY top-level keys from the input.
+   - Each key maps to an object with EXACTLY ONE field: `"pair_regex"`.
+   - `"pair_regex"` is either:
+        • A STRING containing a properly escaped regex pattern (e.g., `"\\\\bKey\\\\b"`), OR
+        • `null` (literal JSON null, NOT string "null")
+   - NO additional fields, comments, or text outside JSON.
 
-## CONDITIONAL LOGIC (CRITICAL):
-- **NULL RULE:** If the "Expected Output Formatting" indicates the value must "exactly match" the predefined list (even if case/spacing differs), set BOTH regex fields to `null`.
-- **REGEX RULE:** Only generate a regex if the formatting allows for **Numeric measurements** (e.g., 4in, 2x2), **Percentages** (e.g., 30%), or **Variants/Similar text** not explicitly listed in the "values" array.
-- **NO REDUNDANCY:** Do not generate a regex that is simply a long list of the "values" joined by OR (|) operators. If no dynamic pattern (like digits or wildcards) is needed, return `null`.
-- ALSO if Expected Output Formatting = [Must exactly match one of the predefined option values with true/false statement] or smilar then pair_regex WILL BE null
+2. **NULL RULES (RETURN `null` IF):**
+   - `"Expected Output Formatting"` contains ANY of these phrases (case-insensitive):
+     `"exactly match"`, `"predefined list"`, `"must be one of"`, `"strictly match"`,
+     `"true/false statement"`, `"enum"`, `"categorical"`, `"fixed options"`
+   - Values are static strings without numeric/percent patterns (even with case variations)
+   - No dynamic elements exist in values (digits, %, units, wildcards)
+   - ⚠️ **Exception**: If the formatting says `"Return Any Values"` or `"Return All Values"` (case-insensitive), **DO NOT apply NULL RULE** — proceed to REGEX RULE instead, **unless** a null-trigger phrase also appears (then NULL wins).
 
-## DEFINITIONS:
-- "pair_regex": Matches the object name followed by a separator (colon/space/dash).
+3. **REGEX RULES (ONLY WHEN NULL RULES DON'T APPLY):**
+   - Pattern must match: `[CASE-INSENSITIVE KEY] + [SEPARATOR] + [VALUE PATTERN]`
+   - Mandatory prefix: `(?i)` for case insensitivity
+   - Key must be wrapped in `\\b` word boundaries: `(?i)\\bKey Name\\b`
+   - Separator pattern: `[\\s:-]+` (matches spaces/colons/dashes)
 
-## OUTPUT RULES:
-- Output MUST be valid JSON only.
-- Output MUST contain ONLY the original top-level keys.
-- Use `(?i)` for case-insensitivity.
+   - **VALUE PATTERNS depend on context:**
+        a) **If "Return Any Values" or "Return All Values" is present** → match **exactly one word** (a single non-whitespace token). Use: `\\\\S+`
+           → Full pattern: `(?i)\\\\b{{KEY}}\\\\b[\\\\s:-]+\\\\S+`
 
-## OUTPUT FORMAT:
+        b) **For Numeric measurements** (e.g., 4in, 2x2): `\\\\d+(?:\\\\.\\\\d+)?(?:\\\\s*[a-zA-Z%]+)?`
+        c) **For Watts**: `\\\\d+(?:\\\\.\\\\d+)?\\\\s*[wW]`
+        d) **For Percentages**: `\\\\d+(?:\\\\.\\\\d+)?%`
+        e) **NEVER hardcode values from "values" array**
+
+   - Escape ALL regex metacharacters properly (e.g., `.` → `\\.`)
+   - In the one-word case, `\\\\S+` ensures no spaces — matching tokens like "black", "100W", "3.5", "N/A"
+
+4. **ANTI-FAILURE MEASURES:**
+   - Test your regex mentally: Would `"Color: red"` match? Yes. `"Color: red blue"`? Only "red" would be considered valid; full match fails after space — which is correct.
+   - If uncertain between null/regex → DEFAULT TO `null`
+   - DOUBLE ESCAPE backslashes: `\b` → `\\\\b`, `\s` → `\\\\s`, `\S` → `\\\\S`
+   - NO trailing commas, comments, or markdown formatting
+
+**EXAMPLE VALID OUTPUTS:**
+✅ Correct (one word – "Return All Values"):
 {{
-  "<object_name>": {{
-    "pair_regex": "..." or null
+  "Finish": {{
+    "pair_regex": "(?i)\\\\bFinish\\\\b[\\\\s:-]+\\\\S+"
   }}
 }}
 
-## INPUT:
-{input}
-/no_think
-'''
-  return Regex_prompt
+✅ Correct (numeric):
+{{
+  "Input Watts": {{
+    "pair_regex": "(?i)\\\\bInput Watts\\\\b[\\\\s:-]+\\\\d+(?:\\\\.\\\\d+)?\\\\s*[wW]"
+  }}
+}}
 
+✅ Correct (null case):
+{{
+  "Status": {{
+    "pair_regex": null
+  }}
+}}
+
+❌ INVALID OUTPUTS (CAUSE SYSTEM FAILURE):
+• Any text before/after JSON
+• Single backslashes: `"\\bKey\\b"`
+• String `"null"` instead of literal null
+• Extra fields like `"notes": "..."`
+• Using `.*` or `.+` in wildcard case (must be `\\\\S+` for one word)
+
+### INPUT DATA
+{input}
+
+### OUTPUT (VALID JSON ONLY):
+'''
+    return Regex_prompt
 
 import re
 from collections import defaultdict

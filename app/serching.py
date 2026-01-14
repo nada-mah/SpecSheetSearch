@@ -219,13 +219,17 @@ def refine_by_key_hits(matched, not_matched, hit_keys):
 def refine_by_value_hits(key_matched, key_not_matched, big_text, schema):
     logging.info("Checking value presence in OCR text...")
     value_matched = {}
+    # Keep the original not_matched keys as they were
     value_not_matched = key_not_matched.copy()
 
     for key in key_matched:
-        attr = get_attribute_info_by_key(key, schema)
+        attr = get_attribute_info_by_key(key, key_matched)
         values = attr.get("values", [])
-        hits = set(find_hits(big_text, values))
 
+        # Identify hits in the text
+        hits = set(v.lower() for v in find_hits(big_text, values))
+
+        # Map every value to True or False
         value_map = {
             v: str(v).lower() in hits
             for v in values
@@ -234,30 +238,17 @@ def refine_by_value_hits(key_matched, key_not_matched, big_text, schema):
         new_obj = attr.copy()
         new_obj["values"] = value_map
 
-        if any(value_map.values()):
-            value_matched[key] = new_obj
-        else:
-            value_not_matched[key] = new_obj
-
-    logging.debug(f"Value refinement: {len(value_matched)} attributes have matching values.")
+        # FORCE everything into value_matched regardless of the boolean results
+        value_matched[key] = new_obj
     return value_matched, value_not_matched
 
 def search_regex_in_text(regex_string: str, big_text: str):
-    """
-    Search for all matches of a regex string in a given text.
-
-    Args:
-        regex_string (str): The regex pattern to search for.
-        big_text (str): The text to search within.
-
-    Returns:
-        list: A list of all matches found.
-    """
     if not regex_string:
         return []
 
     try:
-        pattern = re.compile(regex_string)
+        # Added re.IGNORECASE because your text is lowercase ("input watts")
+        pattern = re.compile(regex_string, re.IGNORECASE)
         matches = pattern.findall(big_text)
         return matches
     except re.error as e:
@@ -267,9 +258,10 @@ def search_regex_in_text(regex_string: str, big_text: str):
 def refine_by_key_value_pair_matching(value_matched, value_not_matched, big_text, regex_withkey):
     final_value_matched = {}
     final_value_not_matched = value_not_matched.copy()
-
+    print(value_matched)
     for attr_name, attr_obj in value_matched.items():
         key = attr_obj.get("norm_key") or attr_obj.get("original_key")
+        key_org = attr_obj.get("original_key")
         values = attr_obj.get("values", {})
         new_values = {}
         any_value_hit = False
@@ -284,16 +276,31 @@ def refine_by_key_value_pair_matching(value_matched, value_not_matched, big_text
                 new_values[value] = False
 
         # Step 2: Additional regex-based matching from regex_withkey
-        regex_info = regex_withkey.get(key, {})
+
+        regex_info = regex_withkey.get(key_org, {})
+        print(key)
         regex_pattern = regex_info.get("pair_regex")
         if regex_pattern:
+            # print(f"🔍 Searching for regex pattern: {regex_pattern}")
             matches_from_regex = search_regex_in_text(regex_pattern, big_text)
+            print(f"🔍 Found matches: {matches_from_regex}")
+            # for match in matches_from_regex:
+            #     # If the matched value exists in values, mark it True
+            #     print(new_values)
+            #     # if match in new_values:
+            #     new_values[match] = True
+            #     any_value_hit = True
+            #     print(f"🔹 Regex matched key-value: {key} -> {match}")
             for match in matches_from_regex:
-                # If the matched value exists in values, mark it True
-                if match in new_values:
-                    new_values[match] = True
+                # 1. Remove key_org from the match (case-insensitive)
+                # 2. .strip(" :-") removes leading/trailing colons, dashes, or spaces
+                cleaned_val = re.sub(re.escape(key_org), "", match, flags=re.IGNORECASE)
+                cleaned_val = cleaned_val.strip(" :-")
+
+                if cleaned_val: # Only add if there's something left after stripping
+                    new_values[cleaned_val] = True
                     any_value_hit = True
-                    print(f"🔹 Regex matched key-value: {key} -> {match}")
+                    # print(f"🔹 Regex matched & cleaned: {key_org} -> {cleaned_val}")
 
         # Save the updated values back to the attribute
         new_attr = attr_obj.copy()
