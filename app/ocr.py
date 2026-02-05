@@ -11,17 +11,25 @@ def get_ocr_object_per_page(images,ocr):
       ocr_results.append(res)
   return ocr_results
 
-import logging
-import json
-import re
-
 def build_full_ocr_text(ocr_results):
-    big_text = ''
-    for i in range(len(ocr_results)):
-        rec_texts = ocr_results[i][0]['rec_texts']
-        big_text += " ".join(rec_texts).lower()
-    logging.debug(f"Built full OCR text (length: {len(big_text)} characters)")
-    return big_text
+    # Collect all text snippets into a list first
+    all_snippets = []
+
+    for result in ocr_results:
+        # Use .get() or check if result is valid to prevent crashes
+        if result and 'rec_texts' in result[0]:
+            snippet = " ".join(result[0]['rec_texts']).lower()
+            all_snippets.append(snippet)
+
+    # Join everything with a space (or "\n" for new lines) at the end
+    return " ".join(all_snippets)
+# def build_full_ocr_text(ocr_results):
+#     big_text = ''
+#     for i in range(len(ocr_results)):
+#         rec_texts = ocr_results[i][0]['rec_texts']
+#         big_text += " ".join(rec_texts).lower()
+#     logging.debug(f"Built full OCR text (length: {len(big_text)} characters)")
+#     return big_text
 
 def filter_ocr_key_hit_by_value_matched(ocr_key_hit, value_matched):
     """

@@ -21,9 +21,8 @@ from  table_handler import (
     detect_table_regions_for_key_hits,
     extract_candidate_rows_for_keys,)
 from  generate_mouting import generate_llm_response
-from  generate_regex import build_regex_prompt, group_schema_by_sentence_closeness, clean_guidance
-import hashlib
-from generate_mouting import remove_think_block
+from ocr import build_full_ocr_text
+from extract_txt_form_expected import format_row_data_to_markdown, get_value_prompt, build_ocr_context
 
 def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="final_result", use_gpu=False):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
