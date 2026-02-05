@@ -1,3 +1,6 @@
+import re
+from difflib import SequenceMatcher
+
 def build_regex_prompt(input):
     Regex_prompt = f'''
 ### STRICT INSTRUCTIONS
@@ -79,8 +82,6 @@ You are a JSON-only regex generator. Follow these rules EXACTLY:
 '''
     return Regex_prompt
 
-import re
-from collections import defaultdict
 
 def normalize_text(text):
     if not text:
@@ -89,14 +90,14 @@ def normalize_text(text):
     text = re.sub(r'\(.*?\)', '', text)   # remove parentheticals
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
+
 def prefix_key(text, prefix_len=4):
     """
     Returns the first `prefix_len` tokens as a grouping key.
     """
     tokens = text.split()
     return " ".join(tokens[:prefix_len])
-from collections import defaultdict
-from difflib import SequenceMatcher
+
 
 def sentence_similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
