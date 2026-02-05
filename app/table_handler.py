@@ -110,8 +110,7 @@ def get_text_under_key_to_page_end(
     hits.sort(key=lambda x: x["y_top"])
     return hits
 
-
-def detect_table_regions_for_key_hits(filtered_keys, ocr_key_hit, value_matched, layout_model, images):
+def detect_table_regions_for_key_hits(filtered_keys,  images):
     """
     Given a list of OCR key hits and value-matched attributes, detect layout tables
     on the relevant pages and return table bounding boxes grouped by relative page index.
@@ -159,19 +158,18 @@ def detect_table_regions_for_key_hits(filtered_keys, ocr_key_hit, value_matched,
     logging.debug(f"Detected tables on {len(regions_by_page)} page(s).")
     return regions_by_page
 
-
 def extract_candidate_rows_for_keys(filtered_keys, ocr_results):
     """
     For each filtered key hit, extract the text that appears under the key
     (from the key's bounding box down to a stopping Y-coordinate) on its page.
-    
+
     Args:
         filtered_keys (list): List of filtered key-hit dicts from `filter_ocr_keys_by_regions`.
             Each must contain: 'key', 'bbox', 'ocr_result_index', and 'stop_y'.
         ocr_results (list): Full OCR output per page (from `get_ocr_object_per_page`).
-        
+
     Returns:
-        tuple: 
+        tuple:
             - pages (set of int): Page indices involved.
             - row_for_key_data (list of dict): Each with 'key', 'page', and 'text' (list of strings).
     """
@@ -199,6 +197,7 @@ def extract_candidate_rows_for_keys(filtered_keys, ocr_results):
 
     logging.debug(f"Extracted candidate rows from {len(pages)} page(s).")
     return pages, row_for_key_data
+
 
 def filter_ocr_keys_and_match_values(
     ocr_key_hit,
