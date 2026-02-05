@@ -1,7 +1,7 @@
 import logging
 from doclayout_yolo import YOLOv10
 from  model_loader import get_yolo_model_path
-from app.ocr import filter_ocr_keys_by_regions, match_values_for_keys
+from ocr import filter_ocr_keys_by_regions, match_values_for_keys
 
 # def layout_detect(model,images):
 #     det_res = model.predict(
