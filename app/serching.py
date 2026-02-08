@@ -372,7 +372,7 @@ def normalize_space(text):
     return re.sub(r'\s+', ' ', text).strip().lower()
 
 
-def refine_by_value_hits(key_matched, key_not_matched, big_text, schema, extra_values_dict):
+def refine_by_value_hits(key_matched, key_not_matched, big_text, extra_values_dict):
     """
     Refines hits by checking standard values and extra suggested values.
     Extra values are only added if they match the big_text.
