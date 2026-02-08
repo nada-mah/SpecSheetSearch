@@ -156,7 +156,7 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
 
     # Step 10: Refine by value hits
     logging.info("  → Checking for matching values in text...")
-    value_matched, value_not_matched = refine_by_value_hits(key_matched, key_not_matched, big_text, schema, extra_values_dict)
+    value_matched, value_not_matched = refine_by_value_hits(key_matched, key_not_matched, big_text, extra_values_dict)
 
     # Step 11: Refine by key-value pair logic
     logging.info("  → Validating key-value co-occurrence...")

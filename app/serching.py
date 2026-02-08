@@ -1,5 +1,6 @@
 import logging
 import re
+import json
 from  helper import generate_ocr_variants
 from  input_handler import get_attribute_info_by_key
 
@@ -367,33 +368,109 @@ def refine_by_key_hits(matched, not_matched, hit_keys):
     logging.debug(f"After key refinement: {len(key_matched)} kept, {len(key_not_matched)} moved to not-matched.")
     return key_matched, key_not_matched
 
+def normalize_space(text):
+    return re.sub(r'\s+', ' ', text).strip().lower()
 
-def refine_by_value_hits(key_matched, key_not_matched, big_text, schema):
-    logging.info("Checking value presence in OCR text...")
+
+def refine_by_value_hits(key_matched, key_not_matched, big_text, schema, extra_values_dict):
+    """
+    Refines hits by checking standard values and extra suggested values.
+    Extra values are only added if they match the big_text.
+    """
     value_matched = {}
-    # Keep the original not_matched keys as they were
     value_not_matched = key_not_matched.copy()
+
+    # Normalize big text once
+    big_text_norm = normalize_space(big_text)
+
+    if extra_values_dict is None:
+        extra_values_dict = {}
 
     for key in key_matched:
         attr = get_attribute_info_by_key(key, key_matched)
-        values = attr.get("values", [])
-        hits = set(find_hits(big_text, values))
 
-        # Map every value to True or False
-        value_map = {
-            v: str(v).lower() in hits
-            for v in values
-        }
+        # --- Standard Values ---
+        standard_values = attr.get("values", [])
+        value_map = {}
+        any_hit = False
 
+        for v in standard_values:
+            v_norm = normalize_space(v)
+            is_hit = bool(v_norm and v_norm in big_text_norm)
+            value_map[v] = is_hit
+            if is_hit:
+                any_hit = True
+
+        # --- Extra Values ---
+        extra_info = extra_values_dict.get(key, {})
+        raw_extras = extra_info.get("possible_extra_values", [])
+
+        # Normalize extras to a list
+        possible_extras = []
+        if isinstance(raw_extras, list) and len(raw_extras) == 1 and str(raw_extras[0]).startswith('['):
+            try:
+                possible_extras = json.loads(raw_extras[0])
+            except:
+                possible_extras = raw_extras
+        elif isinstance(raw_extras, str):
+            possible_extras = [v.strip() for v in raw_extras.replace(',', '\n').split('\n') if v.strip()]
+        else:
+            possible_extras = [str(v).strip() for v in raw_extras if str(v).strip()]
+
+        # Clean extra values
+        possible_extras = [str(v).strip(' "[]\'') for v in possible_extras]
+
+        # Only add extras if they match
+        for extra_val in possible_extras:
+            extra_norm = normalize_space(extra_val)
+            if extra_norm:
+                # Use regex search to be safe
+                pattern = re.compile(re.escape(extra_norm))
+                if pattern.search(big_text_norm):
+                    value_map[extra_val] = True
+                    any_hit = True
+
+        # --- Finalize ---
         new_obj = attr.copy()
         new_obj["values"] = value_map
 
-        if any(value_map.values()):
+        if any_hit:
             value_matched[key] = new_obj
+            # remove from not_matched if previously there
+            value_not_matched.pop(key, None)
         else:
             value_not_matched[key] = new_obj
 
     return value_matched, value_not_matched
+
+
+
+# def refine_by_value_hits(key_matched, key_not_matched, big_text):
+#     logging.info("Checking value presence in OCR text...")
+#     value_matched = {}
+#     # Keep the original not_matched keys as they were
+#     value_not_matched = key_not_matched.copy()
+
+#     for key in key_matched:
+#         attr = get_attribute_info_by_key(key, key_matched)
+#         values = attr.get("values", [])
+#         hits = set(find_hits(big_text, values))
+
+#         # Map every value to True or False
+#         value_map = {
+#             v: str(v).lower() in hits
+#             for v in values
+#         }
+
+#         new_obj = attr.copy()
+#         new_obj["values"] = value_map
+
+#         if any(value_map.values()):
+#             value_matched[key] = new_obj
+#         else:
+#             value_not_matched[key] = new_obj
+
+#     return value_matched, value_not_matched
 
 def search_regex_in_text(regex_string: str, big_text: str):
     if not regex_string:
