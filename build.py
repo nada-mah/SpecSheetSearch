@@ -35,10 +35,6 @@ cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
 
-config_dir = Path("config")
-if config_dir.exists():
-    data_folders.append(("config", "config"))
-
 print(f"📦 Including {len(data_folders)} data folders in the build")
 
 # 3. Packages to collect fully
@@ -83,7 +79,8 @@ hidden_imports = [
     # Add paddlex utils if needed
     "paddlex.utils",
 ]
-
+for pkg in ["chardet", "paddlex"]:
+    cmd_parts.append(f"--collect-submodules={pkg}")
 print(f"⚙️  Using {len(collect_all)} packages with targeted collection")
 print(f"⚙️  Using {len(hidden_imports)} hidden imports (minimal set)")
 
