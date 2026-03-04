@@ -79,8 +79,7 @@ hidden_imports = [
     # Add paddlex utils if needed
     "paddlex.utils",
 ]
-for pkg in ["chardet", "paddlex"]:
-    cmd_parts.append(f"--collect-submodules={pkg}")
+
 print(f"⚙️  Using {len(collect_all)} packages with targeted collection")
 print(f"⚙️  Using {len(hidden_imports)} hidden imports (minimal set)")
 
@@ -113,7 +112,9 @@ for pkg in collect_all:
 # Add hidden imports
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
-
+    
+for pkg in ["chardet", "paddlex"]:
+    cmd_parts.append(f"--collect-submodules={pkg}")
 # Main script
 cmd_parts.append("app/main.py")
 
