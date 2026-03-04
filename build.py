@@ -1,21 +1,20 @@
 #!/usr/bin/env python3
 """
 Build script for Key Search CLI (Order Information Extractor)
-✅ Handles hidden imports and binary modules for PyInstaller on macOS ARM.
+✅ Handles hidden imports, dynamic libraries, and llama_cpp for PyInstaller on macOS ARM.
 """
 
 import os
 import sys
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_dynamic_libs
-
 import doclayout_yolo
+import llama_cpp  # Import to get folder location
 
 OUTPUT_NAME = "keySearch"
 
 # 1️⃣ Ensure main.py exists
 if not Path("app/main.py").exists():
-    print("❌ main.py not found. Run this script from the project root.")
+    print("❌ main.py not found. Run this script from project root.")
     sys.exit(1)
 
 print("🔍 Analyzing project structure...")
@@ -58,7 +57,7 @@ hidden_imports = [
     "doclayout_yolo.nn.modules.modeling.backbone",
     # paddlex optional serving plugin
     "paddlex.inference.serving",
-    # llama_cpp explicit
+    # llama_cpp
     "llama_cpp",
 ]
 
@@ -92,10 +91,9 @@ for pkg in collect_all:
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
-# 6️⃣ Include dynamic libraries for llama_cpp
-binaries = collect_dynamic_libs("llama_cpp")
-for bin_file in binaries:
-    cmd_parts.append(f"--add-binary={bin_file}{os.pathsep}llama_cpp")
+# 6️⃣ Include llama_cpp manually (binary module)
+llama_dir = os.path.dirname(llama_cpp.__file__)
+cmd_parts.append(f"--add-data={llama_dir}{os.pathsep}llama_cpp")
 
 # 7️⃣ Main script
 cmd_parts.append("app/main.py")
