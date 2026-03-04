@@ -25,7 +25,7 @@ jobs:
         python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel numpy
-        pip install --no-cache-dir llama-cpp-python==0.3.15
+        pip install llama-cpp-python==0.2.90
         pip install -r requirements.txt
         pip install pyinstaller paddlex chardet
 
