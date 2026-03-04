@@ -23,23 +23,23 @@ jobs:
         brew update
         brew install cmake ninja libomp || true
 
-    - name: 📦 Create virtual environment & install dependencies
+    - name: 📦 Create venv & install dependencies
       run: |
         python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel
         pip install "llama-cpp-python==0.3.15"
         pip install -r requirements.txt
-        pip install pyinstaller
+        pip install pyinstaller paddlex
 
-    - name: 🛠 Build keySearch executable
+    - name: 🛠 Build keySearch
       run: |
         source venv/bin/activate
         python build.py
 
-    - name: 🧪 Test the built executable
+    - name: 🧪 Test executable
       run: |
-        ./dist/keySearch --help || echo "✅ Executed with fallback (non-zero exit ignored)"
+        ./dist/keySearch --help || echo "✅ Executed with fallback"
 
     - name: 📤 Upload artifact
       uses: actions/upload-artifact@v4
