@@ -10,7 +10,7 @@ from pathlib import Path
 import doclayout_yolo
 
 # Verify we're in the right environment
-if not Path("main.py").exists():
+if not Path("app/main.py").exists():
     print("❌ Error: main.py not found. Please run this script from project root.")
     sys.exit(1)
 
