@@ -23,28 +23,26 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-      
+          
           # Stable Metal build config
           export CMAKE_ARGS="-DGGML_METAL=ON -DGGML_ARM_I8MM=OFF"
-      
+          
           pip install -r requirements.txt
           pip install llama-cpp-python==0.2.90
           pip install pyinstaller
+          pip install paddleocr paddlex chardet
 
     - name: 🛠 Build CLI binary
       run: |
         source venv/bin/activate
         python build.py
-        mv dist/main dist/OrderExtractor
 
     - name: 🧪 Test the built executable
       run: |
-        ./dist/OrderExtractor --help || echo "✅ Executed with fallback (non-zero exit ignored)"
+        ./dist/keySearch --help || echo "✅ Executed with fallback (non-zero exit ignored)"
 
     - name: 📤 Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OrderExtractor
-        path: dist/OrderExtractor
-
-
+        name: keySearch
+        path: dist/keySearch
