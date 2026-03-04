@@ -20,12 +20,16 @@ jobs:
 
     - name: 📦 Install Python dependencies
       run: |
-        python -m venv venv
-        source venv/bin/activate
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install llama-cpp-python --no-cache-dir --force-reinstall 
-        pip install pyinstaller
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+      
+          # Stable Metal build config
+          export CMAKE_ARGS="-DGGML_METAL=ON -DGGML_ARM_I8MM=OFF"
+      
+          pip install -r requirements.txt
+          pip install llama-cpp-python==0.2.90
+          pip install pyinstaller
 
     - name: 🛠 Build CLI binary
       run: |
