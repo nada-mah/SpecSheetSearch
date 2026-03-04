@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build script for Order Information Extractor
+Build script for Key Search (Order Information Extractor)
 Creates a small executable by filtering out unnecessary dependencies
 """
 
@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 import doclayout_yolo
 
+OUTPUT_NAME = "keySearch"  # <-- New executable name
+
 # Verify we're in the right environment
 if not Path("app/main.py").exists():
     print("❌ Error: main.py not found. Please run this script from project root.")
@@ -16,7 +18,7 @@ if not Path("app/main.py").exists():
 
 print("🔍 Analyzing project structure...")
 
-# 1. CRITICAL: Ensure models are NOT included in the build
+# 1. Ensure models are NOT included in the build
 model_files = list(Path("models").rglob("*.pt")) + list(Path("models").rglob("*.gguf"))
 if model_files:
     print(f"⚠️ WARNING: {len(model_files)} model files detected in models/ directory.")
@@ -26,9 +28,9 @@ else:
     print("✅ No model files detected in project directory (good - they should be external)")
 
 # 2. Define data folders to include (ONLY config files, NOT models)
-data_folders = [    
-        ('app/*', 'app')
-    ]
+data_folders = [
+    ('app/*', 'app')
+]
 cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
@@ -38,7 +40,8 @@ if config_dir.exists():
     data_folders.append(("config", "config"))
 
 print(f"📦 Including {len(data_folders)} data folders in the build")
-collect_all=[]
+
+# 3. Packages to collect fully
 collect_all = [
     "paddleocr",
     "paddle",
@@ -46,12 +49,14 @@ collect_all = [
     "doclayout_yolo",
     "llama_cpp",
     "pypdfium2",
-    "skimage",  # For skimage.morphology
-    "docx",     # For recovery_to_doc.py
-    "tiktoken", # ✅ Handles data files automatically
+    "skimage",
+    "docx",
+    "tiktoken",
+    "chardet",    # Added for mypyc modules
+    "paddlex",    # Added for dynamic imports
 ]
 
-# Hidden imports
+# 4. Hidden imports (including mypyc submodules)
 hidden_imports = [
     "huggingface_hub",
     "pyclipper",
@@ -71,20 +76,24 @@ hidden_imports = [
     "docx",
     "tiktoken_ext.openai_public",
     "tiktoken_ext",
+    # Add chardet mypyc submodules
+    "chardet.charsetprober",
+    "chardet.universaldetector",
+    "chardet.utf8prober",
+    # Add paddlex utils if needed
+    "paddlex.utils",
 ]
-
 
 print(f"⚙️  Using {len(collect_all)} packages with targeted collection")
 print(f"⚙️  Using {len(hidden_imports)} hidden imports (minimal set)")
-# print(f"⚙️  Excluding {len(excludes)} unnecessary components")
 
-# 6. Build command with aggressive filtering
+# 5. Build command with aggressive filtering
 cmd_parts = [
     "pyinstaller",
     "--onefile",
     "--console",
     "--clean",
-    "--distpath=dist",
+    f"--distpath=dist",
     "--workpath=build",
     "--specpath=.",
     "--strip",
@@ -92,8 +101,8 @@ cmd_parts = [
     "--upx-exclude=libz.so",
     "--upx-exclude=liblzma.so",
     "--upx-exclude=libssl.so",
-    "--upx-exclude=libcrypto.so"
-
+    "--upx-exclude=libcrypto.so",
+    f"--name={OUTPUT_NAME}",  # <-- Sets executable name
 ]
 
 # Add data folders
@@ -108,29 +117,24 @@ for pkg in collect_all:
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
-# Add exclusions
-# for exclude in excludes:
-    # cmd_parts.append(f"--exclude-module={exclude}")
-
 # Main script
 cmd_parts.append("app/main.py")
 
-# 8. Run the command
+# 6. Run the command
 cmd = " ".join(cmd_parts)
 print("\n" + "="*80)
 print("🚀 Running PyInstaller with the following command:\n")
 print(cmd)
 print("\n" + "="*80 + "\n")
 
-# 9. Execute the build
+# 7. Execute the build
 print("⏳ Building executable... (this may take 5-10 minutes)")
 result = os.system(cmd)
 
 if result == 0:
-    # 10. Verify size
-    exe_path = Path("dist/OrderExtractor")
+    exe_path = Path(f"dist/{OUTPUT_NAME}")
     if not exe_path.exists():
-        exe_path = Path("dist/OrderExtractor.exe")
+        exe_path = Path(f"dist/{OUTPUT_NAME}.exe")
 
     if exe_path.exists():
         size_mb = exe_path.stat().st_size / (1024 * 1024)
@@ -139,14 +143,14 @@ if result == 0:
 
         if size_mb > 400:
             print("⚠️  WARNING: Executable is larger than expected (>150MB)")
-            print("   Run 'pyinstxtractor dist/OrderExtractor' to analyze contents")
+            print("   Run 'pyinstxtractor dist/{OUTPUT_NAME}' to analyze contents")
         else:
             print("✨ Executable size is optimal (<150MB)")
 
-        print("\n👉 Run your app with: dist/OrderExtractor --inputs ./data")
+        print(f"\n👉 Run your app with: dist/{OUTPUT_NAME} --inputs ./data")
         print("💡 Remember: Users must download models separately to ~/.orderextractor/models/")
     else:
-        print("❌ Build succeeded but executable not found in dist/")
+        print(f"❌ Build succeeded but executable {OUTPUT_NAME} not found in dist/")
 else:
     print(f"❌ Build failed with exit code {result}")
     print("💡 Try running with --log-level=DEBUG for more details")
