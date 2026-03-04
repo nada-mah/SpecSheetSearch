@@ -5,6 +5,9 @@ import shutil
 from process_lighting_spec_sheet import process_lighting_spec_sheet
 from model_loader import get_ocr_instance
 
+import sys
+sys.modules['0deeb2fec52624e647be__mypyc'] = None
+
 def main():
     parser = argparse.ArgumentParser(description="Extract structured lighting specs from PDF spec sheets.")
     parser.add_argument("--gpu", action="store_true", help="Use GPU (handled internally by model loader)")
