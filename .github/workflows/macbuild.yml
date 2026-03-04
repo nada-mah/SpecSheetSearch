@@ -17,20 +17,16 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-
+              
     - name: 📦 Install Python dependencies
       run: |
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          
-          # Stable Metal build config
-          export CMAKE_ARGS="-DGGML_METAL=ON -DGGML_ARM_I8MM=OFF"
-          
+          export CMAKE_ARGS="-DGGML_METAL=ON"
+          pip install --no-binary :all: --force-reinstall llama-cpp-python
           pip install -r requirements.txt
-          pip install llama-cpp-python --no-cache-dir --force-reinstall 
-          pip install pyinstaller
-          pip install paddlex chardet
+          pip install pyinstaller paddlex chardet
 
     - name: 🛠 Build CLI binary
       run: |
