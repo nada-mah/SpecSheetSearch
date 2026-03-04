@@ -1,38 +1,36 @@
 #!/usr/bin/env python3
 """
-Build script for Key Search (Order Information Extractor)
-Handles hidden imports for doclayout_yolo, paddlex, and cleans builds.
+Build script for Key Search CLI (Order Information Extractor)
+✅ Handles hidden imports and binary modules for PyInstaller on macOS ARM.
 """
 
 import os
 import sys
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_dynamic_libs
+
 import doclayout_yolo
 
 OUTPUT_NAME = "keySearch"
 
-# Verify main.py exists
+# 1️⃣ Ensure main.py exists
 if not Path("app/main.py").exists():
-    print("❌ main.py not found. Run this script from project root.")
+    print("❌ main.py not found. Run this script from the project root.")
     sys.exit(1)
 
 print("🔍 Analyzing project structure...")
 
-# Data folders (configs only)
-data_folders = [
-    ("app/*", "app"),
-]
-
+# 2️⃣ Data folders (configs only)
+data_folders = [("app/*", "app")]
 cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
 
-# Packages to collect fully
+# 3️⃣ Packages to fully collect
 collect_all = [
     "paddleocr",
     "paddle",
     "doclayout_yolo",
-    "llama_cpp",
     "pypdfium2",
     "skimage",
     "docx",
@@ -42,7 +40,7 @@ collect_all = [
     "python_Levenshtein",
 ]
 
-# Hidden imports (dynamic modules)
+# 4️⃣ Hidden imports
 hidden_imports = [
     "huggingface_hub",
     "pyclipper",
@@ -60,9 +58,11 @@ hidden_imports = [
     "doclayout_yolo.nn.modules.modeling.backbone",
     # paddlex optional serving plugin
     "paddlex.inference.serving",
+    # llama_cpp explicit
+    "llama_cpp",
 ]
 
-# PyInstaller command
+# 5️⃣ PyInstaller command
 cmd_parts = [
     "pyinstaller",
     "--onefile",
@@ -92,10 +92,15 @@ for pkg in collect_all:
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
-# Main script
+# 6️⃣ Include dynamic libraries for llama_cpp
+binaries = collect_dynamic_libs("llama_cpp")
+for bin_file in binaries:
+    cmd_parts.append(f"--add-binary={bin_file}{os.pathsep}llama_cpp")
+
+# 7️⃣ Main script
 cmd_parts.append("app/main.py")
 
-# Execute build
+# 8️⃣ Execute build
 cmd = " ".join(cmd_parts)
 print("\n" + "="*80)
 print("🚀 Running PyInstaller command:\n")
@@ -104,6 +109,7 @@ print("\n" + "="*80 + "\n")
 
 result = os.system(cmd)
 
+# 9️⃣ Check executable
 exe_path = Path(f"dist/{OUTPUT_NAME}")
 if not exe_path.exists():
     exe_path = Path(f"dist/{OUTPUT_NAME}.exe")
