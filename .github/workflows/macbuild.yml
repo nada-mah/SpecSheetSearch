@@ -21,24 +21,20 @@ jobs:
     - name: 📦 Install system dependencies
       run: |
         brew update
-        brew install cmake ninja libomp ccache || true
+        brew install cmake ninja libomp || true
 
-    - name: 🧹 Clean old venv/build
-      run: |
-        rm -rf venv build dist *.spec
-
-    - name: 📦 Install Python dependencies
+    - name: 📦 Create virtual environment & install dependencies
       run: |
         python -m venv venv
         source venv/bin/activate
-        pip install --upgrade pip setuptools wheel numpy
+        pip install --upgrade pip setuptools wheel
+        pip install "llama-cpp-python==0.3.15"
         pip install -r requirements.txt
-        pip install pyinstaller paddlex "llama-cpp-python==0.3.15"
+        pip install pyinstaller paddlex
 
-    - name: 🛠 Build CLI binary
+    - name: 🛠 Build keySearch executable
       run: |
         source venv/bin/activate
-        rm -rf build dist keySearch.spec
         python build.py
 
     - name: 🧪 Test the built executable
