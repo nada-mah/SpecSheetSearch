@@ -27,8 +27,7 @@ else:
 
 # 2. Define data folders to include (ONLY config files, NOT models)
 data_folders = [    
-        ('core/*', 'core'),
-        ('config/*', 'config'),
+        ('app/*', 'app')
     ]
 cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
