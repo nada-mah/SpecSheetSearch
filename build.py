@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Build script for Key Search (Order Information Extractor)
-Fully automated handling of mypyc modules and compiled extensions
+Automatically includes mypyc binaries for chardet and paddlex
 """
 
 import os
@@ -14,29 +14,20 @@ OUTPUT_NAME = "keySearch"
 
 # Verify main.py exists
 if not Path("app/main.py").exists():
-    print("❌ Error: main.py not found. Run from project root.")
+    print("❌ main.py not found. Run this script from project root.")
     sys.exit(1)
 
 print("🔍 Analyzing project structure...")
 
-# Ensure models are NOT included
-model_files = list(Path("models").rglob("*.pt")) + list(Path("models").rglob("*.gguf"))
-if model_files:
-    print(f"⚠️ {len(model_files)} model files detected. They will not be included. Users must download separately.")
-else:
-    print("✅ No model files detected (good)")
-
 # Data folders (configs only)
 data_folders = [
-    ('app/*', 'app')
+    ("app/*", "app")
 ]
 cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
 
-print(f"📦 Including {len(data_folders)} data folders")
-
-# Packages to collect fully (compiled + dynamic)
+# Packages to collect fully
 collect_all = [
     "paddleocr",
     "paddle",
@@ -52,7 +43,7 @@ collect_all = [
     "python_Levenshtein",
 ]
 
-# Hidden imports (dynamic packages)
+# Hidden imports for dynamic modules
 hidden_imports = [
     "huggingface_hub",
     "pyclipper",
@@ -65,9 +56,12 @@ hidden_imports = [
     "PIL",
     "langchain",
     "hf_xet",
+    "doclayout_yolo.nn.modules.modeling",
+    "doclayout_yolo.nn.modules.modeling.backbone",
+    "paddlex.inference.serving"
 ]
 
-# Build command
+# PyInstaller command
 cmd_parts = [
     "pyinstaller",
     "--onefile",
@@ -97,8 +91,9 @@ for pkg in collect_all:
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
-# --- Automatically detect mypyc .so files for chardet and paddlex ---
+# Automatically include mypyc binaries
 venv_site = Path(sys.prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+
 def add_mypyc_binaries(package_name):
     pkg_path = venv_site / package_name
     if pkg_path.exists():
@@ -113,17 +108,15 @@ for pkg in ["chardet", "paddlex"]:
 # Main script
 cmd_parts.append("app/main.py")
 
-# Execute
+# Execute build
 cmd = " ".join(cmd_parts)
 print("\n" + "="*80)
 print("🚀 Running PyInstaller command:\n")
 print(cmd)
 print("\n" + "="*80 + "\n")
 
-print("⏳ Building executable... (may take 5-10 minutes)")
 result = os.system(cmd)
 
-# Check result
 exe_path = Path(f"dist/{OUTPUT_NAME}")
 if not exe_path.exists():
     exe_path = Path(f"dist/{OUTPUT_NAME}.exe")
@@ -135,4 +128,3 @@ if result == 0 and exe_path.exists():
     print("💡 Remember: models must be downloaded separately to ~/.orderextractor/models/")
 else:
     print(f"❌ Build failed with exit code {result} or executable not found.")
-    print("💡 Try running with --log-level=DEBUG for details")
