@@ -4,6 +4,5 @@ doclayout-yolo==0.0.4
 PaddleOCR==3.2.0
 paddlepaddle==3.0.0
 PyMuPDF
-llama-cpp-python 
 huggingface_hub
 langchain==0.3.27
