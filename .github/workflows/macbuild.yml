@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-latest      
+    runs-on: macos-26       # Updated to modern ARM64 runner
 
     steps:
     - name: ⬇️ Checkout code
@@ -18,14 +18,17 @@ jobs:
       with:
         python-version: '3.12'
                   
-    - name: 📦 Install Python dependencies
+    - name: 📦 Install system dependencies
       run: |
         brew update
         brew install cmake ninja libomp || true
+
+    - name: 📦 Install Python dependencies
+      run: |
         python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel numpy
-        pip install llama-cpp-python==0.2.90
+        pip install "llama-cpp-python==0.3.15"  # newer stable version
         pip install -r requirements.txt
         pip install pyinstaller paddlex chardet
 
