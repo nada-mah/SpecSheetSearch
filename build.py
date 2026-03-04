@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Robust build script for Key Search (Order Information Extractor)
-Automatically includes mypyc-compiled modules from chardet and paddlex.
+Build script for Key Search (Order Information Extractor)
+Fully automated handling of mypyc modules and compiled extensions
 """
 
 import os
@@ -12,17 +12,17 @@ import doclayout_yolo
 
 OUTPUT_NAME = "keySearch"
 
-# Verify we're in the project root
+# Verify main.py exists
 if not Path("app/main.py").exists():
     print("❌ Error: main.py not found. Run from project root.")
     sys.exit(1)
 
 print("🔍 Analyzing project structure...")
 
-# Ensure models are NOT included in the build
+# Ensure models are NOT included
 model_files = list(Path("models").rglob("*.pt")) + list(Path("models").rglob("*.gguf"))
 if model_files:
-    print(f"⚠️ WARNING: {len(model_files)} model files detected in models/ directory. They will not be included.")
+    print(f"⚠️ {len(model_files)} model files detected. They will not be included. Users must download separately.")
 else:
     print("✅ No model files detected (good)")
 
@@ -36,11 +36,10 @@ if cfg_source.exists():
 
 print(f"📦 Including {len(data_folders)} data folders")
 
-# Packages to collect fully
+# Packages to collect fully (compiled + dynamic)
 collect_all = [
     "paddleocr",
     "paddle",
-    "Cython",
     "doclayout_yolo",
     "llama_cpp",
     "pypdfium2",
@@ -49,21 +48,23 @@ collect_all = [
     "tiktoken",
     "chardet",
     "paddlex",
+    "PyMuPDF",
+    "python_Levenshtein",
 ]
 
-# Minimal hidden imports
+# Hidden imports (dynamic packages)
 hidden_imports = [
     "huggingface_hub",
     "pyclipper",
     "regex",
     "fuzzywuzzy",
-    "python_Levenshtein",
     "tiktoken",
     "dill",
     "numpy",
     "scipy",
     "PIL",
-    "skimage",
+    "langchain",
+    "hf_xet",
 ]
 
 # Build command
