@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
 Build script for Key Search (Order Information Extractor)
-Automatically includes mypyc binaries for chardet and paddlex
+Handles hidden imports for doclayout_yolo, paddlex, and cleans builds.
 """
 
 import os
 import sys
 from pathlib import Path
-import glob
 import doclayout_yolo
 
 OUTPUT_NAME = "keySearch"
@@ -21,8 +20,9 @@ print("🔍 Analyzing project structure...")
 
 # Data folders (configs only)
 data_folders = [
-    ("app/*", "app")
+    ("app/*", "app"),
 ]
+
 cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
@@ -37,13 +37,12 @@ collect_all = [
     "skimage",
     "docx",
     "tiktoken",
-    "chardet",
     "paddlex",
     "PyMuPDF",
     "python_Levenshtein",
 ]
 
-# Hidden imports for dynamic modules
+# Hidden imports (dynamic modules)
 hidden_imports = [
     "huggingface_hub",
     "pyclipper",
@@ -56,9 +55,11 @@ hidden_imports = [
     "PIL",
     "langchain",
     "hf_xet",
+    # doclayout_yolo nested modules
     "doclayout_yolo.nn.modules.modeling",
     "doclayout_yolo.nn.modules.modeling.backbone",
-    "paddlex.inference.serving"
+    # paddlex optional serving plugin
+    "paddlex.inference.serving",
 ]
 
 # PyInstaller command
@@ -91,20 +92,6 @@ for pkg in collect_all:
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
-# Automatically include mypyc binaries
-venv_site = Path(sys.prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
-
-def add_mypyc_binaries(package_name):
-    pkg_path = venv_site / package_name
-    if pkg_path.exists():
-        so_files = glob.glob(str(pkg_path / "*__mypyc*.so"))
-        for so_file in so_files:
-            print(f"🔹 Adding mypyc binary: {so_file}")
-            cmd_parts.append(f"--add-binary={so_file}:{package_name}")
-
-for pkg in ["chardet", "paddlex"]:
-    add_mypyc_binaries(pkg)
-
 # Main script
 cmd_parts.append("app/main.py")
 
@@ -125,6 +112,5 @@ if result == 0 and exe_path.exists():
     size_mb = exe_path.stat().st_size / (1024*1024)
     print(f"\n✅ Build completed successfully! Size: {size_mb:.1f} MB")
     print(f"👉 Run: dist/{OUTPUT_NAME} --inputs ./data")
-    print("💡 Remember: models must be downloaded separately to ~/.orderextractor/models/")
 else:
     print(f"❌ Build failed with exit code {result} or executable not found.")
