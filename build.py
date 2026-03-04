@@ -98,8 +98,7 @@ for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
 # --- Automatically detect mypyc .so files for chardet and paddlex ---
-venv_site = Path(sys.executable).parent.parent / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
-
+venv_site = Path(sys.prefix) / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
 def add_mypyc_binaries(package_name):
     pkg_path = venv_site / package_name
     if pkg_path.exists():
