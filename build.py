@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
 Robust build script for Key Search (Order Information Extractor)
-Includes proper hooks for mypyc-compiled modules (chardet, paddlex) and ensures dynamic libs are bundled.
+Automatically includes mypyc-compiled modules from chardet and paddlex.
 """
 
 import os
 import sys
 from pathlib import Path
+import glob
 import doclayout_yolo
 
 OUTPUT_NAME = "keySearch"
 
-# Check that main.py exists
+# Verify we're in the project root
 if not Path("app/main.py").exists():
     print("❌ Error: main.py not found. Run from project root.")
     sys.exit(1)
@@ -21,12 +22,11 @@ print("🔍 Analyzing project structure...")
 # Ensure models are NOT included in the build
 model_files = list(Path("models").rglob("*.pt")) + list(Path("models").rglob("*.gguf"))
 if model_files:
-    print(f"⚠️ WARNING: {len(model_files)} model files detected in models/")
-    print("   These will NOT be included in the executable. Users must download separately.")
+    print(f"⚠️ WARNING: {len(model_files)} model files detected in models/ directory. They will not be included.")
 else:
     print("✅ No model files detected (good)")
 
-# Data folders (config files only)
+# Data folders (configs only)
 data_folders = [
     ('app/*', 'app')
 ]
@@ -66,34 +66,13 @@ hidden_imports = [
     "skimage",
 ]
 
-print(f"⚙️  Collecting {len(collect_all)} packages")
-print(f"⚙️  Using {len(hidden_imports)} hidden imports")
-
-# Ensure hooks folder exists for dynamic libs
-hooks_dir = Path("hooks")
-hooks_dir.mkdir(exist_ok=True)
-
-# Hook for chardet
-(chardet_hook := hooks_dir / "hook-chardet.py").write_text("""\
-from PyInstaller.utils.hooks import collect_submodules, collect_dynamic_libs
-hiddenimports = collect_submodules('chardet')
-binaries = collect_dynamic_libs('chardet')
-""")
-
-# Hook for paddlex
-(paddlex_hook := hooks_dir / "hook-paddlex.py").write_text("""\
-from PyInstaller.utils.hooks import collect_submodules, collect_dynamic_libs
-hiddenimports = collect_submodules('paddlex')
-binaries = collect_dynamic_libs('paddlex')
-""")
-
 # Build command
 cmd_parts = [
     "pyinstaller",
     "--onefile",
     "--console",
     "--clean",
-    f"--distpath=dist",
+    "--distpath=dist",
     "--workpath=build",
     "--specpath=.",
     "--strip",
@@ -102,7 +81,6 @@ cmd_parts = [
     "--upx-exclude=liblzma.so",
     "--upx-exclude=libssl.so",
     "--upx-exclude=libcrypto.so",
-    f"--additional-hooks-dir={hooks_dir}",
     f"--name={OUTPUT_NAME}",
 ]
 
@@ -110,25 +88,39 @@ cmd_parts = [
 for src, dest in data_folders:
     cmd_parts.append(f"--add-data={src}{os.pathsep}{dest}")
 
-# Collect all submodules for critical packages
+# Collect all submodules
 for pkg in collect_all:
     cmd_parts.append(f"--collect-all={pkg}")
 
-# Add hidden imports
+# Hidden imports
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
+
+# --- Automatically detect mypyc .so files for chardet and paddlex ---
+venv_site = Path(sys.executable).parent.parent / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+
+def add_mypyc_binaries(package_name):
+    pkg_path = venv_site / package_name
+    if pkg_path.exists():
+        so_files = glob.glob(str(pkg_path / "*__mypyc*.so"))
+        for so_file in so_files:
+            print(f"🔹 Adding mypyc binary: {so_file}")
+            cmd_parts.append(f"--add-binary={so_file}:{package_name}")
+
+for pkg in ["chardet", "paddlex"]:
+    add_mypyc_binaries(pkg)
 
 # Main script
 cmd_parts.append("app/main.py")
 
-# Execute command
+# Execute
 cmd = " ".join(cmd_parts)
 print("\n" + "="*80)
-print("🚀 Running PyInstaller with the following command:\n")
+print("🚀 Running PyInstaller command:\n")
 print(cmd)
 print("\n" + "="*80 + "\n")
 
-print("⏳ Building executable... (may take 5-10 min)")
+print("⏳ Building executable... (may take 5-10 minutes)")
 result = os.system(cmd)
 
 # Check result
@@ -143,4 +135,4 @@ if result == 0 and exe_path.exists():
     print("💡 Remember: models must be downloaded separately to ~/.orderextractor/models/")
 else:
     print(f"❌ Build failed with exit code {result} or executable not found.")
-    print("💡 Try running with --log-level=DEBUG for details.")
+    print("💡 Try running with --log-level=DEBUG for details")
