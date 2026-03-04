@@ -23,9 +23,7 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          export CMAKE_ARGS="-DGGML_METAL=ON" 
-          export GGML_CPU_NO_I8MM=1
-          pip install --no-binary :all: --force-reinstall llama-cpp-python
+          pip install llama-cpp-python==0.3.15 
           pip install -r requirements.txt
           pip install pyinstaller paddlex chardet
 
