@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-macos:
-    runs-on: macos-14     # Updated to modern ARM64 runner
+    runs-on: macos-14
 
     steps:
     - name: ⬇️ Checkout code
@@ -17,7 +17,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-                  
+
     - name: 📦 Install system dependencies
       run: |
         brew update
@@ -28,14 +28,22 @@ jobs:
         python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel numpy
-        pip install "llama-cpp-python==0.3.15"  # newer stable version
         pip install -r requirements.txt
         pip install pyinstaller paddlex chardet
+
+    - name: 🧹 Clean old builds
+      run: rm -rf build dist
 
     - name: 🛠 Build CLI binary
       run: |
         source venv/bin/activate
         python build.py
+
+    - name: 🐛 Verify mypyc binaries included
+      run: |
+        source venv/bin/activate
+        ls venv/lib/python3.12/site-packages/chardet/*__mypyc*.so
+        ls venv/lib/python3.12/site-packages/paddlex/*__mypyc*.so
 
     - name: 🧪 Test the built executable
       run: |
