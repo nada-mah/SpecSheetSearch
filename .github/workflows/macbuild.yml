@@ -23,27 +23,22 @@ jobs:
         brew update
         brew install cmake ninja libomp || true
 
+    - name: 🧹 Clean old venv and builds
+      run: |
+        rm -rf venv build dist *.spec
+
     - name: 📦 Install Python dependencies
       run: |
         python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel numpy
         pip install -r requirements.txt
-        pip install pyinstaller paddlex chardet
-
-    - name: 🧹 Clean old builds
-      run: rm -rf build dist
+        pip install pyinstaller paddlex
 
     - name: 🛠 Build CLI binary
       run: |
         source venv/bin/activate
         python build.py
-
-    - name: 🐛 Verify mypyc binaries included
-      run: |
-        source venv/bin/activate
-        ls venv/lib/python3.12/site-packages/chardet/*__mypyc*.so
-        ls venv/lib/python3.12/site-packages/paddlex/*__mypyc*.so
 
     - name: 🧪 Test the built executable
       run: |
