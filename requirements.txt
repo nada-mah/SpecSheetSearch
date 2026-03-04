@@ -6,3 +6,12 @@ paddlepaddle==3.0.0
 PyMuPDF
 huggingface_hub
 langchain==0.3.27
+pillow
+tqdm
+regex
+fuzzywuzzy
+python-Levenshtein
+PyPDF2
+dill
+hf_xet
+tiktoken
