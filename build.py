@@ -78,7 +78,7 @@ cmd_parts.append(f"--add-data={llama_dir}{os.pathsep}llama_cpp")
 
 # Main script
 cmd_parts.append("app/main.py")
-
+cmd_parts.append("--collect-data=paddlex")
 # Build
 cmd = " ".join(cmd_parts)
 print("\n" + "="*80)
