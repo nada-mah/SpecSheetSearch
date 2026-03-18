@@ -33,15 +33,18 @@ if cfg_source.exists():
 collect_all = [
     "paddleocr", "paddle", "paddlex", "doclayout_yolo",
     "pypdfium2", "PyMuPDF", "langchain", "tqdm", "regex",
-    "PyPDF2", "dill", "hf_xet", "tiktoken", "pillow"
+    "PyPDF2", "dill", "hf_xet", "tiktoken", "pillow",
+     "cv2", "opencv-contrib-python"
 ]
 
 # 3️⃣ Metadata & Hidden Imports (The OCR Fix)
 # Package names for metadata (often have hyphens)
-metadata_to_copy = ["paddlex", "paddleocr", "shapely", "pyclipper", "lanms-neo"]
+metadata_to_copy = [ "paddlex", "paddleocr", 
+                    "opencv-contrib-python", "shapely", "pyclipper", "lanms-neo"]
 
 # Module names for imports (must use underscores)
 hidden_imports = [
+    "cv2", "paddlex.inference.utils.io.readers",
     "huggingface_hub", "llama_cpp", "shapely", "pyclipper", "lanms_neo",
     "paddlex.inference.models.ocr", "paddlex.inference.pipelines.ocr",
     "paddle.base.libpaddle", "paddle.utils.cpp_extension"
