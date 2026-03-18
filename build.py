@@ -59,8 +59,10 @@ cmd_parts = [
     "--workpath=build",
     "--specpath=.",
     "--strip",
-
-    # 🔥 CRITICAL FIXES
+    'paddlex.inference.models.ocr',
+    'paddlex.inference.pipelines.ocr',
+    'shapely',
+    'pyclipper'
     "--runtime-hook=hooks/rthook_paddle.py",
     "--hidden-import=paddle.base.libpaddle",
     
