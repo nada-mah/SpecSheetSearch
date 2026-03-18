@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
 Build script for keySearch CLI
-Handles hidden imports, dynamic libraries, llama_cpp, and chardet mypyc issue.
+Handles hidden imports, dynamic libraries, llama_cpp, and PaddleX OCR dependencies.
 """
 
 import os
 import sys
+import subprocess
 from pathlib import Path
 import doclayout_yolo
-import llama_cpp  # needed for PyInstaller binary inclusion
+import llama_cpp
+import paddle
 
 OUTPUT_NAME = "keySearch"
+# macOS uses ':', Windows uses ';'
+SEP = os.pathsep 
 
 # Verify main script exists
 if not Path("app/main.py").exists():
@@ -23,9 +27,7 @@ cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
 
-
-
-# 2️⃣ Packages to collect fully
+# 2️⃣ Packages to collect fully (Data + Binaries + Py)
 collect_all = [
     "paddleocr",
     "paddle",
@@ -43,17 +45,20 @@ collect_all = [
     "pillow",
 ]
 
-# 3️⃣ Hidden imports
+# 3️⃣ Hidden imports (Force include modules PyInstaller might miss)
 hidden_imports = [
     "huggingface_hub",
     "llama_cpp",
-    'paddlex.inference.models.ocr',
-    'paddlex.inference.pipelines.ocr',
-    'shapely',
-    'pyclipper'
+    "paddlex.inference.models.ocr",
+    "paddlex.inference.pipelines.ocr",
+    "shapely",
+    "pyclipper",
+    "lanms_neo", # Critical for OCR text detection
+    "paddle.base.libpaddle",
+    "paddle.utils.cpp_extension",
 ]
 
-# 4️⃣ PyInstaller command
+# 4️⃣ Initialize PyInstaller command
 cmd_parts = [
     "pyinstaller",
     "--onefile",
@@ -62,25 +67,23 @@ cmd_parts = [
     "--distpath=dist",
     "--workpath=build",
     "--specpath=.",
-    "--strip",
-
-    # 🔥 CRITICAL FIXES
-    "--runtime-hook=hooks/rthook_paddle.py",
-    "--hidden-import=paddle.base.libpaddle",
-    
-    "--hidden-import=paddle.utils.cpp_extension",
-    "--hidden-import=paddlex",
-
-    "--additional-hooks-dir=hooks",
-
+    # Note: --strip can break code signatures on macOS ARM64; 
+    # remove it if you get 'Signature Invalid' errors.
+    "--strip", 
     f"--name={OUTPUT_NAME}",
 ]
 
+# Add runtime hooks and additional hooks
+if Path("hooks/rthook_paddle.py").exists():
+    cmd_parts.append("--runtime-hook=hooks/rthook_paddle.py")
+if Path("hooks").exists():
+    cmd_parts.append("--additional-hooks-dir=hooks")
+
 # Add data folders
 for src, dest in data_folders:
-    cmd_parts.append(f"--add-data={src}{os.pathsep}{dest}")
+    cmd_parts.append(f"--add-data={src}{SEP}{dest}")
 
-# Add packages
+# Add full package collections
 for pkg in collect_all:
     cmd_parts.append(f"--collect-all={pkg}")
 
@@ -88,35 +91,37 @@ for pkg in collect_all:
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
-# 🔥 Force include paddle libs directory
-import paddle
+# 🔥 Force include paddle and llama_cpp directories to ensure .so/.dylib are caught
 paddle_dir = os.path.dirname(paddle.__file__)
-cmd_parts.append(f"--add-data={paddle_dir}{os.pathsep}paddle")
+cmd_parts.append(f"--add-data={paddle_dir}{SEP}paddle")
 
-# Add llama_cpp binaries manually
 llama_dir = os.path.dirname(llama_cpp.__file__)
-cmd_parts.append(f"--add-data={llama_dir}{os.pathsep}llama_cpp")
+cmd_parts.append(f"--add-data={llama_dir}{SEP}llama_cpp")
 
-# Main script
-cmd_parts.append("app/main.py")
+# Force include specific paddlex data
 cmd_parts.append("--collect-data=paddlex")
-# Build
+
+# 5️⃣ The Main Script (Must be the last positional argument)
+cmd_parts.append("app/main.py")
+
+# Execute Build
 cmd = " ".join(cmd_parts)
 print("\n" + "="*80)
 print("🚀 Running PyInstaller:\n")
 print(cmd)
 print("\n" + "="*80 + "\n")
 
-result = os.system(cmd)
+# Use subprocess for better error handling than os.system
+result = subprocess.run(cmd, shell=True)
 
 # Check executable
 exe_path = Path(f"dist/{OUTPUT_NAME}")
-if not exe_path.exists():
-    exe_path = Path(f"dist/{OUTPUT_NAME}.exe")
+if sys.platform == "win32":
+    exe_path = exe_path.with_suffix(".exe")
 
-if result == 0 and exe_path.exists():
+if result.returncode == 0 and exe_path.exists():
     size_mb = exe_path.stat().st_size / (1024 * 1024)
     print(f"\n✅ Build completed successfully! Size: {size_mb:.1f} MB")
-    print(f"👉 Run: dist/{OUTPUT_NAME} --inputs ./data")
+    print(f"👉 Run: ./dist/{OUTPUT_NAME} --input ./data/new_pdfs --schema ./schema/test_schema.json")
 else:
-    print(f"❌ Build failed with exit code {result} or executable not found.")
+    print(f"❌ Build failed with exit code {result.returncode}.")
