@@ -57,3 +57,37 @@ except ImportError:
 # Standard search path fix for PyInstaller
 if hasattr(sys, '_MEIPASS'):
     os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
+    
+    import sys
+import os
+
+# --- SAFER MONKEYPATCH ---
+# We inject these into sys.modules BEFORE anything else imports them
+# This avoids triggering the 'PDX has already been initialized' error.
+
+def bypass_paddlex_checks():
+    try:
+        # Check if paddlex is in sys.modules; if not, we can safely mock the utils
+        # without triggering the full package initialization.
+        import paddlex.utils.deps as paddlex_deps
+        
+        def mock_true(*args, **kwargs):
+            return True
+        
+        paddlex_deps.require_extra = mock_true
+        paddlex_deps.require_deps = mock_true
+        paddlex_deps.require_all_deps = mock_true
+        # Also patch the internal check used by PDFReader
+        if hasattr(paddlex_deps, 'check_dep'):
+            paddlex_deps.check_dep = mock_true
+            
+        print("🚀 PaddleX Dependency Checks Safely Bypassed")
+    except Exception:
+        # If it fails here, the main app will try to import it anyway
+        pass
+
+bypass_paddlex_checks()
+
+# Fix for pathing
+if hasattr(sys, '_MEIPASS'):
+    os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
