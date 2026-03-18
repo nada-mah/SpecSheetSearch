@@ -29,25 +29,23 @@ jobs:
         python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel
+        pip install -r requirements.txt
         
         # Keep your specific version while adding OCR extras
         pip install "llama-cpp-python==0.3.15" 
         
-        pip install -r requirements.txt
         pip install pyinstaller
 
     - name: 🔧 Fix Paddle Binary Linkage & Inject core.py
       run: |
         source venv/bin/activate
-        PADDLE_BASE="venv/lib/python3.12/site-packages/paddle/base"
-        
-        # Inject your custom "Universal" core.py (the one using hasattr/getattr)
-        # This prevents the ImportError: cannot import name '_get_legacy_default_stream'
-        cp core.py "$PADDLE_BASE/core.py"
-        
-        # Ensure libomp is accessible to the binary
-        LIBOMP_PATH=$(brew --prefix libomp)/lib/libomp.dylib
-        cp "$LIBOMP_PATH" "$PADDLE_BASE/"
+        CORE_PATH="venv/lib/python3.12/site-packages/paddle/base/core.py"
+        echo "🔍 Previewing first 10 lines of $CORE_PATH"
+        head -n 10 "$CORE_PATH" || echo "⚠️ core.py not found"
+        echo "🗑 Deleting $CORE_PATH"
+        rm -f "$CORE_PATH"
+        echo "📦 Copying repo core.py to $CORE_PATH"
+        cp core.py "$CORE_PATH"
 
     - name: 🛠 Build keySearch
       run: |
