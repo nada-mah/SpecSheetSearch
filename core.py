@@ -414,20 +414,26 @@ def set_paddle_custom_device_lib_path(lib_dir):
             os.environ['CUSTOM_DEVICE_ROOT'] = ''
 
 
-
+# set paddle lib path
 def set_paddle_lib_path():
     lib_dir = None
 
-    # 🔥 1. Check PyInstaller temp directory
+    # 1. Check PyInstaller temp directory (_MEIPASS)
     if hasattr(sys, "_MEIPASS"):
-        meipass_path = os.path.join(sys._MEIPASS, "paddle", "libs")
-        if os.path.exists(meipass_path):
-            lib_dir = meipass_path
+        # PyInstaller bundles everything into the root of _MEIPASS 
+        # or a specific subdirectory depending on your .spec file
+        candidate = os.path.join(sys._MEIPASS, "paddle", "libs")
+        if os.path.exists(candidate):
+            lib_dir = candidate
+        else:
+            # Fallback for some PyInstaller configurations
+            lib_dir = os.path.join(sys._MEIPASS, "libs")
 
-    # 🔥 2. Fallback to site-packages
-    if lib_dir is None:
+    # 2. Fallback to site-packages (for local dev)
+    if not lib_dir or not os.path.exists(lib_dir):
         try:
-            site_dirs = site.getsitepackages()
+            # Filter out None values from getsitepackages
+            site_dirs = [p for p in site.getsitepackages() if p is not None]
         except Exception:
             site_dirs = []
 
@@ -437,20 +443,14 @@ def set_paddle_lib_path():
                 lib_dir = candidate
                 break
 
-    # 🔥 3. Fallback to USER_SITE
-    if lib_dir is None and hasattr(site, "USER_SITE") and site.USER_SITE:
-        candidate = os.path.join(site.USER_SITE, "paddle", "libs")
-        if os.path.exists(candidate):
-            lib_dir = candidate
-
-    # ✅ 4. FINAL SAFE GUARD (prevents None crash)
-    if lib_dir and os.path.exists(lib_dir):
+    # 3. Final Guard: Only call _set_paddle_lib_path if we found a valid string
+    if lib_dir and isinstance(lib_dir, str) and os.path.exists(lib_dir):
         _set_paddle_lib_path(lib_dir)
         set_paddle_custom_device_lib_path(lib_dir)
     else:
+        # Don't crash, just warn. Paddle might try to use system paths.
         import warnings
-        warnings.warn("Paddle lib path could not be resolved. Running may fail.")
-
+        warnings.warn(f"Paddle lib path could not be resolved. lib_dir was: {lib_dir}")
 
 set_paddle_lib_path()
 
