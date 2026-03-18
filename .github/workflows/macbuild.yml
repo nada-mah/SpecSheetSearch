@@ -31,8 +31,9 @@ jobs:
         pip install --upgrade pip setuptools wheel
         # Install the specific OCR extra and the common "phantom" dependencies
         pip install "paddlex[ocr]" 
+        pip install "paddlex[ocr-core]"
         pip install shapely pyclipper lanms-neo
-        pip install pyinstaller paddleocr
+        pip install pyinstaller
         pip install -r requirements.txt
         pip install "llama-cpp-python==0.3.15" 
 
