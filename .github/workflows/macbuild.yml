@@ -26,6 +26,7 @@ jobs:
 
     - name: 📦 Create venv & install dependencies
       run: |
+        python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel
         # Install the specific OCR extra and the common "phantom" dependencies
