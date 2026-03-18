@@ -38,6 +38,17 @@ jobs:
         CORE_PATH="venv/lib/python3.12/site-packages/paddle/base/core.py"
         rm -f "$CORE_PATH"
         cp core.py "$CORE_PATH"
+    - name: 🔧 Fix Paddle Binary Linkage
+      run: |
+          source venv/bin/activate
+      
+          PADDLE_BASE="venv/lib/python3.12/site-packages/paddle/base"
+          
+          # 1. Check if the symbol actually exists in the .so (Diagnostic)
+          nm -gD "$PADDLE_BASE/libpaddle.so" | grep _check_last_cuda_error || echo "Symbol not found in binary"
+
+          # 2. Inject your custom core.py
+          cp core.py "$PADDLE_BASE/core.py"
 
     - name: 🛠 Build keySearch
       run: |
