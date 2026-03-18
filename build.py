@@ -63,6 +63,7 @@ cmd_parts = [
     # 🔥 CRITICAL FIXES
     "--runtime-hook=hooks/rthook_paddle.py",
     "--hidden-import=paddle.base.libpaddle",
+    
     "--hidden-import=paddle.utils.cpp_extension",
     "--hidden-import=paddlex",
 
