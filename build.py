@@ -84,7 +84,27 @@ for src, dest in data_folders:
 cmd_parts.append(f"--add-data={os.path.dirname(paddle.__file__)}{SEP}paddle")
 cmd_parts.append(f"--add-data={os.path.dirname(llama_cpp.__file__)}{SEP}llama_cpp")
 cmd_parts.append("--collect-data=paddlex")
+import importlib.metadata
 
+# Packages PaddleX checks for the "OCR" extra
+metadata_to_bundle = ["paddlex", "paddleocr", "shapely", "pyclipper", "lanms-neo"]
+
+for pkg in metadata_to_bundle:
+    try:
+        # Verify the package exists in the CI environment
+        importlib.metadata.distribution(pkg)
+        cmd_parts.append(f"--copy-metadata={pkg}")
+    except importlib.metadata.PackageNotFoundError:
+        print(f"⚠️ Metadata for '{pkg}' not found. Skipping.")
+
+# Ensure modules are hidden imports (using underscores, not hyphens)
+cmd_parts.extend([
+    "--hidden-import=shapely",
+    "--hidden-import=pyclipper",
+    "--hidden-import=lanms_neo",
+    "--hidden-import=paddlex.inference.models.ocr",
+    "--hidden-import=paddlex.inference.pipelines.ocr"
+])
 # Final Script Path
 cmd_parts.append("app/main.py")
 

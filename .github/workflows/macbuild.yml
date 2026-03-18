@@ -26,15 +26,14 @@ jobs:
 
     - name: 📦 Create venv & install dependencies
       run: |
-        python -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools wheel
+        # Install the specific OCR extra and the common "phantom" dependencies
+        pip install "paddlex[ocr]" 
+        pip install shapely pyclipper lanms-neo
+        pip install pyinstaller paddleocr
         pip install -r requirements.txt
-        
-        # Keep your specific version while adding OCR extras
         pip install "llama-cpp-python==0.3.15" 
-        
-        pip install pyinstaller
 
     - name: 🔧 Fix Paddle Binary Linkage & Inject core.py
       run: |
