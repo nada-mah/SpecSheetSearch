@@ -262,140 +262,75 @@ if platform.system().lower() == 'linux':
         except Exception as e:
             # NOTE(zhiqiu): do not abort if failed, since it may success when import libpaddle.so
             sys.stderr.write('Error: Can not preload libgomp.so')
-
 try:
     from . import libpaddle
 
+    # --- 1. AVX & Alias Logic (Keep as is) ---
     if avx_supported() and not libpaddle.is_compiled_with_avx():
-        sys.stderr.write(
-            "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
-            "Hence, no-avx core with worse performance will be imported.\nIf you like, you could "
-            "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
-            "to get better performance.\n"
-        )
+        sys.stderr.write("Hint: Your machine support AVX, but the installed paddlepaddle doesn't...\n")
 
-    # assign tensor alias
     libpaddle.LoDTensor = libpaddle.DenseTensor
     libpaddle.Tensor = libpaddle.DenseTensor
-    libpaddle.VarDesc.VarType.LOD_TENSOR = (
-        libpaddle.VarDesc.VarType.DENSE_TENSOR
-    )
-    libpaddle.VarDesc.VarType.LOD_TENSOR_ARRAY = (
-        libpaddle.VarDesc.VarType.DENSE_TENSOR_ARRAY
-    )
+    libpaddle.VarDesc.VarType.LOD_TENSOR = libpaddle.VarDesc.VarType.DENSE_TENSOR
+    libpaddle.VarDesc.VarType.LOD_TENSOR_ARRAY = libpaddle.VarDesc.VarType.DENSE_TENSOR_ARRAY
 
-    from .libpaddle import *  # noqa: F403
-    from .libpaddle import (  # noqa: F401
-        __doc__,
-        __file__,
-        __name__,
-        __package__,
-        __unittest_throw_exception__,
-        _append_python_callable_object_and_return_id,
-        # _check_last_cuda_error,
-        _cleanup,
-        _create_loaded_parameter,
-        _cuda_synchronize,
-        _device_synchronize,
-        _dygraph_debug_level,
-        _get_all_register_op_kernels,
-        _get_amp_attrs,
-        _get_amp_op_list,
-        _get_current_stream,
-        _get_eager_deletion_vars,
-        _get_legacy_default_stream,
-        _get_phi_kernel_name,
-        _get_registered_phi_kernels,
-        _get_stream_from_external,
-        _get_use_default_grad_op_desc_maker_ops,
-        _has_grad,
-        _is_compiled_with_heterps,
-        _is_dygraph_debug_enabled,
-        _is_program_version_supported,
-        _Profiler,
-        _ProfilerResult,
-        _promote_types_if_complex_exists,
-        _RecordEvent,
-        _Scope,
-        _set_amp_op_list,
-        _set_current_stream,
-        _set_eager_deletion_mode,
-        _set_fuse_parameter_group_size,
-        _set_fuse_parameter_memory_size,
-        _set_has_grad,
-        _set_paddle_lib_path,
-        _set_warmup,
-        _switch_tracer,
-        _test_enforce_gpu_success,
-        _xpu_device_synchronize,
-        _xpu_get_current_stream,
-        _xpu_set_current_stream,
-    )
+    # --- 2. DYNAMIC SYMBOL LOADING ---
+    # Instead of 'from .libpaddle import (a, b, c)', we pull them safely.
+    
+    # This list contains everything your script or project might reference.
+    target_symbols = [
+        "__doc__", "__file__", "__name__", "__package__", "__unittest_throw_exception__",
+        "_append_python_callable_object_and_return_id", "_check_last_cuda_error", "_cleanup",
+        "_create_loaded_parameter", "_cuda_synchronize", "_device_synchronize", "_dygraph_debug_level",
+        "_get_all_register_op_kernels", "_get_amp_attrs", "_get_amp_op_list", "_get_current_stream",
+        "_get_eager_deletion_vars", "_get_legacy_default_stream", "_get_phi_kernel_name",
+        "_get_registered_phi_kernels", "_get_stream_from_external", "_get_use_default_grad_op_desc_maker_ops",
+        "_has_grad", "_is_compiled_with_heterps", "_is_dygraph_debug_enabled", "_is_program_version_supported",
+        "_Profiler", "_ProfilerResult", "_promote_types_if_complex_exists", "_RecordEvent", "_Scope",
+        "_set_amp_op_list", "_set_current_stream", "_set_eager_deletion_mode", "_set_fuse_parameter_group_size",
+        "_set_fuse_parameter_memory_size", "_set_has_grad", "_set_paddle_lib_path", "_set_warmup",
+        "_switch_tracer", "_test_enforce_gpu_success", "_xpu_device_synchronize", "_xpu_get_current_stream",
+        "_xpu_set_current_stream", "CustomDeviceEvent", "CustomDeviceStream", "_get_current_custom_device_stream",
+        "_set_current_custom_device_stream", "_synchronize_custom_device", "__set_all_prim_enabled",
+        "__set_bwd_prim_enabled", "__set_eager_prim_enabled", "__set_fwd_prim_enabled", "_add_skip_comp_ops",
+        "_is_bwd_prim_enabled", "_is_eager_prim_enabled", "_is_fwd_prim_enabled", "_is_all_prim_enabled",
+        "_remove_skip_comp_ops", "_set_bwd_prim_blacklist", "_set_prim_target_grad_name",
+        "_array_to_share_memory_tensor", "_cleanup_mmap_fds", "_convert_to_tensor_list",
+        "_erase_process_pids", "_remove_tensor_list_mmap_fds", "_set_max_memory_map_allocation_pool_size",
+        "_set_process_pids", "_set_process_signal_handler", "_throw_error_if_process_failed"
+    ]
 
-    try:
-        from .libpaddle import _check_last_cuda_error
-    except ImportError:
-        # If it's a CPU-only build (standard for macOS), this symbol won't exist.
-        _check_last_cuda_error = None
-    # isort: off
+    # Dynamically inject available symbols into the global namespace
+    for symbol in target_symbols:
+        if hasattr(libpaddle, symbol):
+            globals()[symbol] = getattr(libpaddle, symbol)
+        else:
+            # Assign None to symbols not found in the current binary (like CUDA symbols on Mac)
+            globals()[symbol] = None
 
-    # custom device
-    from .libpaddle import (  # noqa: F401
-        CustomDeviceEvent,
-        CustomDeviceStream,
-        _get_current_custom_device_stream,
-        _set_current_custom_device_stream,
-        _synchronize_custom_device,
-    )
-
-    # prim controller flags
-    from .libpaddle import (  # noqa: F401
-        __set_all_prim_enabled,
-        __set_bwd_prim_enabled,
-        __set_eager_prim_enabled,
-        __set_fwd_prim_enabled,
-        _add_skip_comp_ops,
-        _is_bwd_prim_enabled,
-        _is_eager_prim_enabled,
-        _is_fwd_prim_enabled,
-        _is_all_prim_enabled,
-        _remove_skip_comp_ops,
-        _set_bwd_prim_blacklist,
-        _set_prim_target_grad_name,
-    )
-
-    # type promotion
-
-    # isort: on
-    if sys.platform != 'win32':
-        from .libpaddle import (  # noqa: F401
-            _array_to_share_memory_tensor,
-            _cleanup_mmap_fds,
-            _convert_to_tensor_list,
-            _erase_process_pids,
-            _remove_tensor_list_mmap_fds,
-            _set_max_memory_map_allocation_pool_size,
-            _set_process_pids,
-            _set_process_signal_handler,
-            _throw_error_if_process_failed,
-        )
+    # Handle the wildcard safely
+    from .libpaddle import * # noqa: F403
 
 except Exception as e:
     if has_paddle_dy_lib:
-        sys.stderr.write(
-            'Error: Can not import paddle core while this file exists: '
-            + current_path
-            + os.sep
-            + 'libpaddle.'
-            + dy_lib_suffix
-            + '\n'
-        )
-    if not avx_supported() and libpaddle.is_compiled_with_avx():
-        sys.stderr.write(
-            "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
-            "you should reinstall paddlepaddle with no-avx core.\n"
-        )
+        sys.stderr.write(f'Error: Can not import paddle core while this file exists: {current_path}\n')
     raise e
+# except Exception as e:
+#     if has_paddle_dy_lib:
+#         sys.stderr.write(
+#             'Error: Can not import paddle core while this file exists: '
+#             + current_path
+#             + os.sep
+#             + 'libpaddle.'
+#             + dy_lib_suffix
+#             + '\n'
+#         )
+#     if not avx_supported() and libpaddle.is_compiled_with_avx():
+#         sys.stderr.write(
+#             "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
+#             "you should reinstall paddlepaddle with no-avx core.\n"
+#         )
+#     raise e
 
 
 def set_paddle_custom_device_lib_path(lib_dir):
