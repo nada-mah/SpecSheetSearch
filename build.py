@@ -7,6 +7,7 @@ Handles hidden imports, dynamic libraries, llama_cpp, and PaddleX OCR dependenci
 import os
 import sys
 import subprocess
+import importlib.metadata
 from pathlib import Path
 import doclayout_yolo
 import llama_cpp
@@ -27,7 +28,7 @@ cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
 
-# 2️⃣ Packages to collect fully (Data + Binaries + Py)
+# 2️⃣ Packages to collect fully
 collect_all = [
     "paddleocr",
     "paddle",
@@ -45,7 +46,7 @@ collect_all = [
     "pillow",
 ]
 
-# 3️⃣ Hidden imports (Force include modules PyInstaller might miss)
+# 3️⃣ Hidden imports (Module names)
 hidden_imports = [
     "huggingface_hub",
     "llama_cpp",
@@ -53,12 +54,22 @@ hidden_imports = [
     "paddlex.inference.pipelines.ocr",
     "shapely",
     "pyclipper",
-    "lanms_neo", # Critical for OCR text detection
+    "lanms_neo", 
     "paddle.base.libpaddle",
     "paddle.utils.cpp_extension",
 ]
 
-# 4️⃣ Initialize PyInstaller command
+# 4️⃣ Metadata to copy (Package names)
+# We check these safely so PyInstaller doesn't crash if one is missing.
+metadata_to_copy = [
+    "paddlex",
+    "paddleocr",
+    "shapely",
+    "pyclipper",
+    "lanms-neo"
+]
+
+# Initialize PyInstaller command
 cmd_parts = [
     "pyinstaller",
     "--onefile",
@@ -67,22 +78,18 @@ cmd_parts = [
     "--distpath=dist",
     "--workpath=build",
     "--specpath=.",
-    "--copy-metadata=paddlex",
-    "--copy-metadata=paddleocr",
-    "--copy-metadata=shapely",
-    "--copy-metadata=pyclipper",
-    "--copy-metadata=lanms-neo",
-    # Force include these hidden imports again to be safe
-    "--hidden-import=shapely",
-    "--hidden-import=pyclipper",
-    "--hidden-import=lanms_neo",
-    "--hidden-import=paddlex.inference.models.ocr",
-    "--hidden-import=paddlex.inference.pipelines.ocr"
-    # Note: --strip can break code signatures on macOS ARM64; 
-    # remove it if you get 'Signature Invalid' errors.
+    # --strip can break code signatures on macOS ARM64; remove if getting 'Killed: 9'
     "--strip", 
     f"--name={OUTPUT_NAME}",
 ]
+
+# --- SAFE METADATA COLLECTION ---
+for pkg in metadata_to_copy:
+    try:
+        importlib.metadata.distribution(pkg)
+        cmd_parts.append(f"--copy-metadata={pkg}")
+    except importlib.metadata.PackageNotFoundError:
+        print(f"⚠️ Warning: Metadata for package '{pkg}' not found. Skipping.")
 
 # Add runtime hooks and additional hooks
 if Path("hooks/rthook_paddle.py").exists():
@@ -102,17 +109,16 @@ for pkg in collect_all:
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
 
-# 🔥 Force include paddle and llama_cpp directories to ensure .so/.dylib are caught
+# Force include binary directories
 paddle_dir = os.path.dirname(paddle.__file__)
 cmd_parts.append(f"--add-data={paddle_dir}{SEP}paddle")
 
 llama_dir = os.path.dirname(llama_cpp.__file__)
 cmd_parts.append(f"--add-data={llama_dir}{SEP}llama_cpp")
 
-# Force include specific paddlex data
 cmd_parts.append("--collect-data=paddlex")
 
-# 5️⃣ The Main Script (Must be the last positional argument)
+# 5️⃣ The Main Script (Last argument)
 cmd_parts.append("app/main.py")
 
 # Execute Build
@@ -122,10 +128,9 @@ print("🚀 Running PyInstaller:\n")
 print(cmd)
 print("\n" + "="*80 + "\n")
 
-# Use subprocess for better error handling than os.system
 result = subprocess.run(cmd, shell=True)
 
-# Check executable
+# Check result
 exe_path = Path(f"dist/{OUTPUT_NAME}")
 if sys.platform == "win32":
     exe_path = exe_path.with_suffix(".exe")
@@ -133,6 +138,5 @@ if sys.platform == "win32":
 if result.returncode == 0 and exe_path.exists():
     size_mb = exe_path.stat().st_size / (1024 * 1024)
     print(f"\n✅ Build completed successfully! Size: {size_mb:.1f} MB")
-    print(f"👉 Run: ./dist/{OUTPUT_NAME} --input ./data/new_pdfs --schema ./schema/test_schema.json")
 else:
     print(f"❌ Build failed with exit code {result.returncode}.")

@@ -262,22 +262,24 @@ if platform.system().lower() == 'linux':
         except Exception as e:
             # NOTE(zhiqiu): do not abort if failed, since it may success when import libpaddle.so
             sys.stderr.write('Error: Can not preload libgomp.so')
+
+# ... (Keep all imports and AVX detection functions at the top as they are) ...
+
 try:
     from . import libpaddle
 
-    # --- 1. AVX & Alias Logic (Keep as is) ---
+    # --- 1. AVX & Alias Logic ---
     if avx_supported() and not libpaddle.is_compiled_with_avx():
         sys.stderr.write("Hint: Your machine support AVX, but the installed paddlepaddle doesn't...\n")
 
-    libpaddle.LoDTensor = libpaddle.DenseTensor
-    libpaddle.Tensor = libpaddle.DenseTensor
-    libpaddle.VarDesc.VarType.LOD_TENSOR = libpaddle.VarDesc.VarType.DENSE_TENSOR
-    libpaddle.VarDesc.VarType.LOD_TENSOR_ARRAY = libpaddle.VarDesc.VarType.DENSE_TENSOR_ARRAY
+    # Essential attribute aliasing for DenseTensor migration
+    for attr in ['DenseTensor', 'DenseTensorArray']:
+        if hasattr(libpaddle, attr):
+            setattr(libpaddle, attr.replace('Dense', 'LoD'), getattr(libpaddle, attr))
+            if attr == 'DenseTensor':
+                libpaddle.Tensor = libpaddle.DenseTensor
 
-    # --- 2. DYNAMIC SYMBOL LOADING ---
-    # Instead of 'from .libpaddle import (a, b, c)', we pull them safely.
-    
-    # This list contains everything your script or project might reference.
+    # --- 2. DYNAMIC SYMBOL LOADING (The Engine) ---
     target_symbols = [
         "__doc__", "__file__", "__name__", "__package__", "__unittest_throw_exception__",
         "_append_python_callable_object_and_return_id", "_check_last_cuda_error", "_cleanup",
@@ -297,102 +299,75 @@ try:
         "_remove_skip_comp_ops", "_set_bwd_prim_blacklist", "_set_prim_target_grad_name",
         "_array_to_share_memory_tensor", "_cleanup_mmap_fds", "_convert_to_tensor_list",
         "_erase_process_pids", "_remove_tensor_list_mmap_fds", "_set_max_memory_map_allocation_pool_size",
-        "_set_process_pids", "_set_process_signal_handler", "_throw_error_if_process_failed"
+        "_set_process_pids", "_set_process_signal_handler", "_throw_error_if_process_failed",
+        "VarDesc" # Needed for the Type aliases below
     ]
 
-    # Dynamically inject available symbols into the global namespace
     for symbol in target_symbols:
-        if hasattr(libpaddle, symbol):
-            globals()[symbol] = getattr(libpaddle, symbol)
-        else:
-            # Assign None to symbols not found in the current binary (like CUDA symbols on Mac)
-            globals()[symbol] = None
+        globals()[symbol] = getattr(libpaddle, symbol, None)
 
-    # Handle the wildcard safely
+    # Patch VarDesc types if available
+    if hasattr(libpaddle, "VarDesc"):
+        try:
+            libpaddle.VarDesc.VarType.LOD_TENSOR = libpaddle.VarDesc.VarType.DENSE_TENSOR
+            libpaddle.VarDesc.VarType.LOD_TENSOR_ARRAY = libpaddle.VarDesc.VarType.DENSE_TENSOR_ARRAY
+        except AttributeError:
+            pass
+
+    # Safety fallback for legacy streams
+    if globals().get("_get_legacy_default_stream") is None:
+        globals()["_get_legacy_default_stream"] = globals().get("_get_current_stream")
+
+    # Final wildcard import to catch remaining minor symbols
     from .libpaddle import * # noqa: F403
 
 except Exception as e:
     if has_paddle_dy_lib:
         sys.stderr.write(f'Error: Can not import paddle core while this file exists: {current_path}\n')
     raise e
-# except Exception as e:
-#     if has_paddle_dy_lib:
-#         sys.stderr.write(
-#             'Error: Can not import paddle core while this file exists: '
-#             + current_path
-#             + os.sep
-#             + 'libpaddle.'
-#             + dy_lib_suffix
-#             + '\n'
-#         )
-#     if not avx_supported() and libpaddle.is_compiled_with_avx():
-#         sys.stderr.write(
-#             "Error: Your machine doesn't support AVX, but the installed PaddlePaddle is avx core, "
-#             "you should reinstall paddlepaddle with no-avx core.\n"
-#         )
-#     raise e
 
+# --- 3. LIBRARY PATH CONFIGURATION (Moved after injection) ---
 
 def set_paddle_custom_device_lib_path(lib_dir):
-    if os.environ.get('CUSTOM_DEVICE_ROOT', None) is not None:
-        # use set environment value
-        return
-    path1 = os.path.normpath(
-        os.path.join(lib_dir, '..', 'paddle_custom_device')
-    )
-    if os.path.exists(path1):
-        # set CUSTOM_DEVICE_ROOT default path (lib_dir/../paddle_custom_device)
-        os.environ['CUSTOM_DEVICE_ROOT'] = path1
-    else:
-        path2 = os.path.normpath(
-            os.path.join(lib_dir, '..', '..', 'paddle_custom_device')
-        )
-        if os.path.exists(path2):
-            # set CUSTOM_DEVICE_ROOT default path (lib_dir/../../paddle_custom_device)
-            os.environ['CUSTOM_DEVICE_ROOT'] = path2
-        else:
-            os.environ['CUSTOM_DEVICE_ROOT'] = ''
+    if os.environ.get('CUSTOM_DEVICE_ROOT'): return
+    
+    for depth in ['..', '../../']:
+        path = os.path.normpath(os.path.join(lib_dir, depth, 'paddle_custom_device'))
+        if os.path.exists(path):
+            os.environ['CUSTOM_DEVICE_ROOT'] = path
+            return
+    os.environ['CUSTOM_DEVICE_ROOT'] = ''
 
-
-# set paddle lib path
 def set_paddle_lib_path():
     lib_dir = None
-
-    # 1. Check PyInstaller temp directory (_MEIPASS)
+    # 1. Check PyInstaller _MEIPASS
     if hasattr(sys, "_MEIPASS"):
-        # PyInstaller bundles everything into the root of _MEIPASS 
-        # or a specific subdirectory depending on your .spec file
-        candidate = os.path.join(sys._MEIPASS, "paddle", "libs")
-        if os.path.exists(candidate):
-            lib_dir = candidate
-        else:
-            # Fallback for some PyInstaller configurations
-            lib_dir = os.path.join(sys._MEIPASS, "libs")
-
-    # 2. Fallback to site-packages (for local dev)
-    if not lib_dir or not os.path.exists(lib_dir):
-        try:
-            # Filter out None values from getsitepackages
-            site_dirs = [p for p in site.getsitepackages() if p is not None]
-        except Exception:
-            site_dirs = []
-
-        for site_dir in site_dirs:
-            candidate = os.path.join(site_dir, "paddle", "libs")
+        for sub in [os.path.join("paddle", "libs"), "libs"]:
+            candidate = os.path.join(sys._MEIPASS, sub)
             if os.path.exists(candidate):
                 lib_dir = candidate
                 break
 
-    # 3. Final Guard: Only call _set_paddle_lib_path if we found a valid string
-    if lib_dir and isinstance(lib_dir, str) and os.path.exists(lib_dir):
-        _set_paddle_lib_path(lib_dir)
-        set_paddle_custom_device_lib_path(lib_dir)
-    else:
-        # Don't crash, just warn. Paddle might try to use system paths.
-        import warnings
-        warnings.warn(f"Paddle lib path could not be resolved. lib_dir was: {lib_dir}")
+    # 2. Site-packages fallback
+    if not lib_dir:
+        for site_dir in (site.getsitepackages() if hasattr(site, 'getsitepackages') else []):
+            if site_dir:
+                candidate = os.path.join(site_dir, "paddle", "libs")
+                if os.path.exists(candidate):
+                    lib_dir = candidate
+                    break
+
+    # 3. Execution
+    if lib_dir and os.path.exists(lib_dir):
+        # We use globals() check because we dynamically injected it above
+        setter = globals().get("_set_paddle_lib_path")
+        if setter:
+            setter(lib_dir)
+            set_paddle_custom_device_lib_path(lib_dir)
 
 set_paddle_lib_path()
+
+# ... (Keep the rest of the file: prim_config, Batch Norm logic, etc.) ...
 
 
 # This api is used for check of model output.
