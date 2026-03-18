@@ -1,18 +1,21 @@
 import sys
 import os
 
-# 1. Force-inject OCR dependencies into sys.modules so PaddleX thinks they are installed
+# Force-inject OCR dependencies into sys.modules
+# This prevents PaddleX from raising DependencyError
 try:
     import shapely
     import pyclipper
-    # paddleocr/paddlex often look for these specifically
+    import lanms_neo
     sys.modules['shapely'] = shapely
     sys.modules['pyclipper'] = pyclipper
+    sys.modules['lanms_neo'] = lanms_neo
 except ImportError:
     pass
 
-# 2. Fix the Paddle Search Path for the .so files
+# Ensure the bundled libraries are in the search path
 if hasattr(sys, '_MEIPASS'):
-    paddle_libs = os.path.join(sys._MEIPASS, 'paddle', 'libs')
-    if os.path.exists(paddle_libs):
-        os.environ['PATH'] = paddle_libs + os.pathsep + os.environ.get('PATH', '')
+    # Fix for macOS/Linux .so loading
+    os.environ['LD_LIBRARY_PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+    # Fix for Windows .dll loading
+    os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
