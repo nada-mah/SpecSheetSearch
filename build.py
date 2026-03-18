@@ -23,10 +23,13 @@ cfg_source = Path(doclayout_yolo.__file__).parent / "cfg"
 if cfg_source.exists():
     data_folders.append((str(cfg_source), "doclayout_yolo/cfg"))
 
+
+
 # 2️⃣ Packages to collect fully
 collect_all = [
     "paddleocr",
     "paddle",
+    "paddlex",
     "doclayout_yolo",
     "pypdfium2",
     "PyMuPDF",
@@ -56,7 +59,15 @@ cmd_parts = [
     "--workpath=build",
     "--specpath=.",
     "--strip",
-    "--additional-hooks-dir=hooks",  # <- critical for chardet fix
+
+    # 🔥 CRITICAL FIXES
+    "--runtime-hook=hooks/rthook_paddle.py",
+    "--hidden-import=paddle.base.libpaddle",
+    "--hidden-import=paddle.utils.cpp_extension",
+    "--hidden-import=paddlex",
+
+    "--additional-hooks-dir=hooks",
+
     f"--name={OUTPUT_NAME}",
 ]
 
@@ -71,6 +82,11 @@ for pkg in collect_all:
 # Add hidden imports
 for mod in hidden_imports:
     cmd_parts.append(f"--hidden-import={mod}")
+
+# 🔥 Force include paddle libs directory
+import paddle
+paddle_dir = os.path.dirname(paddle.__file__)
+cmd_parts.append(f"--add-data={paddle_dir}{os.pathsep}paddle")
 
 # Add llama_cpp binaries manually
 llama_dir = os.path.dirname(llama_cpp.__file__)
