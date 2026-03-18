@@ -31,14 +31,10 @@ jobs:
         pip install --upgrade pip setuptools wheel
         
         # Keep your specific version while adding OCR extras
-        pip install "llama-cpp-python==0.3.15"
-        
-        # 🔥 CRITICAL: Install paddlex with [ocr] to satisfy the DependencyError
-        # This keeps the versioning consistent but includes sub-deps like pyclipper/shapely
-        pip install "paddlex[ocr]" 
+        pip install "llama-cpp-python==0.3.15" 
         
         pip install -r requirements.txt
-        pip install pyinstaller paddleocr
+        pip install pyinstaller
 
     - name: 🔧 Fix Paddle Binary Linkage & Inject core.py
       run: |
