@@ -47,6 +47,10 @@ collect_all = [
 hidden_imports = [
     "huggingface_hub",
     "llama_cpp",
+    'paddlex.inference.models.ocr',
+    'paddlex.inference.pipelines.ocr',
+    'shapely',
+    'pyclipper'
 ]
 
 # 4️⃣ PyInstaller command
@@ -59,10 +63,8 @@ cmd_parts = [
     "--workpath=build",
     "--specpath=.",
     "--strip",
-    'paddlex.inference.models.ocr',
-    'paddlex.inference.pipelines.ocr',
-    'shapely',
-    'pyclipper'
+
+    # 🔥 CRITICAL FIXES
     "--runtime-hook=hooks/rthook_paddle.py",
     "--hidden-import=paddle.base.libpaddle",
     
