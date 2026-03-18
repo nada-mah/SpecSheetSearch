@@ -67,6 +67,17 @@ cmd_parts = [
     "--distpath=dist",
     "--workpath=build",
     "--specpath=.",
+    "--copy-metadata=paddlex",
+    "--copy-metadata=paddleocr",
+    "--copy-metadata=shapely",
+    "--copy-metadata=pyclipper",
+    "--copy-metadata=lanms-neo",
+    # Force include these hidden imports again to be safe
+    "--hidden-import=shapely",
+    "--hidden-import=pyclipper",
+    "--hidden-import=lanms_neo",
+    "--hidden-import=paddlex.inference.models.ocr",
+    "--hidden-import=paddlex.inference.pipelines.ocr"
     # Note: --strip can break code signatures on macOS ARM64; 
     # remove it if you get 'Signature Invalid' errors.
     "--strip", 
