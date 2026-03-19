@@ -91,6 +91,24 @@ llama_path = os.path.dirname(llama_cpp.__file__)
 # Add this to your PyInstaller command parts
 cmd_parts.append(f"--add-data={llama_path}{os.pathsep}llama_cpp")
 cmd_parts.append("--collect-data=paddlex")
+
+
+# Get the absolute path to the installed package
+doclayout_path = os.path.dirname(doclayout_yolo.__file__)
+
+# Add the 'cfg' folder to your data_folders
+# We map it so it lands in 'doclayout_yolo/cfg' inside the bundle
+data_folders = [
+    ("app/*", "app"),
+    (os.path.join(doclayout_path, "cfg", "*"), "doclayout_yolo/cfg"),
+    # Add this if there are other yaml files in the root of the package
+    (os.path.join(doclayout_path, "*.yaml"), "doclayout_yolo"), 
+]
+
+# Ensure you use these in your pyinstaller command loop
+for src, dest in data_folders:
+    cmd_parts.append(f"--add-data={src}{os.pathsep}{dest}")
+
 import importlib.metadata
 
 # Packages PaddleX checks for the "OCR" extra

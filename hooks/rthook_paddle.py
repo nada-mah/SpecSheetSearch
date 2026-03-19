@@ -24,8 +24,10 @@ except ImportError:
 # Standard search path fix
 if hasattr(sys, '_MEIPASS'):
     os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
-import sys
-import os
+# Add this to your existing rthook_paddle.py
+if hasattr(sys, '_MEIPASS'):
+    # This helps YOLO/DocLayout find their internal config files
+    os.environ['YOLO_CONFIG_DIR'] = os.path.join(sys._MEIPASS, "doclayout_yolo/cfg")
 
 # --- THE MEGA MONKEYPATCH ---
 try:
