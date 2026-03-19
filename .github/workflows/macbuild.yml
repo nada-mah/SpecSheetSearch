@@ -59,8 +59,10 @@ jobs:
     - name: 🧪 Run executable with test data
       run: |
         mkdir -p data/new_pdfs schema
-        echo '{"fields": []}' > schema/test_schema.json
-        touch data/new_pdfs/test.pdf
+        # Download a tiny valid 1-page PDF
+        curl -L https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf -o data/new_pdfs/test.pdf
+        # Create a basic JSON schema
+        echo '{"properties": {}}' > schema/test_schema.json
 
         ./dist/keySearch \
           --input=./data/new_pdfs \

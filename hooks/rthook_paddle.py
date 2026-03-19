@@ -91,3 +91,33 @@ bypass_paddlex_checks()
 # Fix for pathing
 if hasattr(sys, '_MEIPASS'):
     os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
+
+
+# --- SILENT MONKEYPATCH ---
+def patch_paddlex():
+    # We only patch if paddlex hasn't been initialized yet
+    # We use a try-except to avoid crashing the whole boot sequence
+    try:
+        import paddlex.utils.deps as paddlex_deps
+        
+        def mock_return_true(*args, **kwargs):
+            return True
+            
+        paddlex_deps.require_extra = mock_return_true
+        paddlex_deps.require_deps = mock_return_true
+        paddlex_deps.require_all_deps = mock_return_true
+        
+        # If the repository manager exists, we try to mark it as initialized 
+        # to prevent the RuntimeError later, or we just stay out of the way.
+        print("🚀 PaddleX dependencies bypassed.")
+    except Exception:
+        pass
+
+patch_paddlex()
+
+# CRITICAL: Fix for llama-cpp-python shared library resolution
+if hasattr(sys, '_MEIPASS'):
+    # Add the bundle root to the DLL/Shared Library search path
+    os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
+    # For macOS specifically
+    os.environ['DYLD_LIBRARY_PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('DYLD_LIBRARY_PATH', '')

@@ -86,6 +86,10 @@ for src, dest in data_folders:
 # Force include binary directories
 cmd_parts.append(f"--add-data={os.path.dirname(paddle.__file__)}{SEP}paddle")
 cmd_parts.append(f"--add-data={os.path.dirname(llama_cpp.__file__)}{SEP}llama_cpp")
+llama_path = os.path.dirname(llama_cpp.__file__)
+
+# Add this to your PyInstaller command parts
+cmd_parts.append(f"--add-data={llama_path}{os.pathsep}llama_cpp")
 cmd_parts.append("--collect-data=paddlex")
 import importlib.metadata
 
