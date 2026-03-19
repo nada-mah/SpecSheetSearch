@@ -1,125 +1,48 @@
 import sys
 import os
 
-# --- THE MONKEYPATCH ---
-# This overrides the internal PaddleX dependency checker to always return True
-try:
-    import paddlex.utils.deps as paddlex_deps
-    def mock_require_extra(*args, **kwargs):
-        return True
-    paddlex_deps.require_extra = mock_require_extra
-    print("🚀 PaddleX Dependency Check Bypassed")
-except ImportError:
-    pass
+def run_runtime_patches():
+    # 1. FIX PATHS FOR BUNDLED ENVIRONMENT
+    if hasattr(sys, '_MEIPASS'):
+        bundle_dir = sys._MEIPASS
+        
+        # Add bundle root to search paths for .dylib / .so files (fixes llama-cpp)
+        os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
+        os.environ['DYLD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('DYLD_LIBRARY_PATH', '')
+        
+        # Fix for doclayout_yolo config files
+        os.environ['YOLO_CONFIG_DIR'] = os.path.join(bundle_dir, "doclayout_yolo/cfg")
+        os.environ['DOCLAYOUT_YOLO_CFG'] = os.path.join(bundle_dir, "doclayout_yolo/cfg/default.yaml")
 
-# Force-inject modules into sys.modules to be safe
-try:
-    import shapely, pyclipper, lanms_neo
-    sys.modules['shapely'] = shapely
-    sys.modules['pyclipper'] = pyclipper
-    sys.modules['lanms_neo'] = lanms_neo
-except ImportError:
-    pass
+    # 2. FORCE-INJECT CRITICAL MODULES
+    # This ensures PyInstaller's hidden imports are correctly mapped in sys.modules
+    modules_to_ensure = ['shapely', 'pyclipper', 'lanms_neo', 'cv2']
+    for mod_name in modules_to_ensure:
+        try:
+            mod = __import__(mod_name)
+            sys.modules[mod_name] = mod
+        except ImportError:
+            pass
 
-# Standard search path fix
-if hasattr(sys, '_MEIPASS'):
-    os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
-# Add this to your existing rthook_paddle.py
-if hasattr(sys, '_MEIPASS'):
-    # This helps YOLO/DocLayout find their internal config files
-    os.environ['YOLO_CONFIG_DIR'] = os.path.join(sys._MEIPASS, "doclayout_yolo/cfg")
-
-# --- THE MEGA MONKEYPATCH ---
-try:
-    import paddlex.utils.deps as paddlex_deps
-    
-    # Mock the 'require_extra' check (fixes the [ocr] error)
-    def mock_require_extra(*args, **kwargs):
-        return True
-    
-    # Mock the 'require_deps' check (fixes the opencv-contrib error)
-    def mock_require_deps(*args, **kwargs):
-        return True
-
-    paddlex_deps.require_extra = mock_require_extra
-    paddlex_deps.require_deps = mock_require_deps
-    paddlex_deps.require_all_deps = mock_require_deps
-    
-    print("🚀 PaddleX Dependency Checks Fully Bypassed")
-except Exception as e:
-    print(f"⚠️ Failed to patch PaddleX: {e}")
-
-# --- Ensure OpenCV is visible ---
-try:
-    import cv2
-    sys.modules['cv2'] = cv2
-except ImportError:
-    pass
-
-# Standard search path fix for PyInstaller
-if hasattr(sys, '_MEIPASS'):
-    os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
-    
-    import sys
-import os
-
-# --- SAFER MONKEYPATCH ---
-# We inject these into sys.modules BEFORE anything else imports them
-# This avoids triggering the 'PDX has already been initialized' error.
-
-def bypass_paddlex_checks():
+    # 3. MEGA MONKEYPATCH (Bypass PaddleX Dependency Checks)
+    # We do this inside a function and catch exceptions to avoid "already initialized" errors
     try:
-        # Check if paddlex is in sys.modules; if not, we can safely mock the utils
-        # without triggering the full package initialization.
         import paddlex.utils.deps as paddlex_deps
         
         def mock_true(*args, **kwargs):
             return True
         
+        # Override all checker functions
         paddlex_deps.require_extra = mock_true
         paddlex_deps.require_deps = mock_true
         paddlex_deps.require_all_deps = mock_true
-        # Also patch the internal check used by PDFReader
         if hasattr(paddlex_deps, 'check_dep'):
             paddlex_deps.check_dep = mock_true
             
-        print("🚀 PaddleX Dependency Checks Safely Bypassed")
+        print("🚀 PaddleX Dependency Checks Bypassed")
     except Exception:
-        # If it fails here, the main app will try to import it anyway
+        # If it fails, we keep going so the main app can try its own logic
         pass
 
-bypass_paddlex_checks()
-
-# Fix for pathing
-if hasattr(sys, '_MEIPASS'):
-    os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
-
-
-# --- SILENT MONKEYPATCH ---
-def patch_paddlex():
-    # We only patch if paddlex hasn't been initialized yet
-    # We use a try-except to avoid crashing the whole boot sequence
-    try:
-        import paddlex.utils.deps as paddlex_deps
-        
-        def mock_return_true(*args, **kwargs):
-            return True
-            
-        paddlex_deps.require_extra = mock_return_true
-        paddlex_deps.require_deps = mock_return_true
-        paddlex_deps.require_all_deps = mock_return_true
-        
-        # If the repository manager exists, we try to mark it as initialized 
-        # to prevent the RuntimeError later, or we just stay out of the way.
-        print("🚀 PaddleX dependencies bypassed.")
-    except Exception:
-        pass
-
-patch_paddlex()
-
-# CRITICAL: Fix for llama-cpp-python shared library resolution
-if hasattr(sys, '_MEIPASS'):
-    # Add the bundle root to the DLL/Shared Library search path
-    os.environ['PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('PATH', '')
-    # For macOS specifically
-    os.environ['DYLD_LIBRARY_PATH'] = sys._MEIPASS + os.pathsep + os.environ.get('DYLD_LIBRARY_PATH', '')
+# Execute the patches
+run_runtime_patches()
