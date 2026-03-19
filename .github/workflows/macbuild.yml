@@ -55,7 +55,7 @@ jobs:
       run: |
         export DYLD_LIBRARY_PATH=$(python -c "import os, llama_cpp; print(os.path.dirname(llama_cpp.__file__))")
         echo "DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
-        
+
     - name: 🛠 Build keySearch
       run: |
         source venv/bin/activate
@@ -73,7 +73,6 @@ jobs:
         ./dist/keySearch \
           --input=./data/new_pdfs \
           --schema=./schema/test_schema.json \
-          || echo "⚠️ Runtime execution failed (check logs for missing imports)"
 
     - name: 📤 Upload artifact
       uses: actions/upload-artifact@v4
