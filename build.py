@@ -32,9 +32,9 @@ data_folders = [
 ]
 # Specifically for llama-cpp-python, we often need to add the binaries directly
 # find all .dylib, .so, or .dll files in that folder
-for file in os.listdir(llama_cpp_dir):
+for file in os.listdir(llama_path):
     if file.endswith(('.dylib', '.so', '.dll')):
-        data_folders.append((os.path.join(llama_cpp_dir, file), "."))
+        data_folders.append((os.path.join(llama_path, file), "."))
 
 # 4️⃣ Define Collections & Metadata
 collect_all = [
