@@ -62,7 +62,7 @@ jobs:
         # Download a tiny valid 1-page PDF
         curl -L https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf -o data/new_pdfs/test.pdf
         # Create a basic JSON schema
-        echo '{"product_types": ["lighting"], "properties": {}}' > schema/test_schema.json
+        echo '{  "Housing Depth": {"data_type": "string","values": ["Super Shallow "],"product_types": ["Downlights"]}}' > schema/test_schema.json
 
         ./dist/keySearch \
           --input=./data/new_pdfs \

@@ -33,7 +33,7 @@ data_folders = [
 
 # 4️⃣ Define Collections & Metadata
 collect_all = [
-    "paddleocr", "paddle", "paddlex", "doclayout_yolo",
+    "paddleocr", "paddle", "paddlex",
     "pypdfium2", "PyMuPDF", "langchain", "tqdm", "regex",
     "PyPDF2", "dill", "hf_xet", "tiktoken", "pillow",
     "cv2", "opencv-contrib-python"

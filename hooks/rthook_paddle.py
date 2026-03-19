@@ -1,48 +1,25 @@
 import sys
 import os
 
-def run_runtime_patches():
-    # 1. FIX PATHS FOR BUNDLED ENVIRONMENT
-    if hasattr(sys, '_MEIPASS'):
-        bundle_dir = sys._MEIPASS
-        
-        # Add bundle root to search paths for .dylib / .so files (fixes llama-cpp)
-        os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
-        os.environ['DYLD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('DYLD_LIBRARY_PATH', '')
-        
-        # Fix for doclayout_yolo config files
-        os.environ['YOLO_CONFIG_DIR'] = os.path.join(bundle_dir, "doclayout_yolo/cfg")
-        os.environ['DOCLAYOUT_YOLO_CFG'] = os.path.join(bundle_dir, "doclayout_yolo/cfg/default.yaml")
+if hasattr(sys, '_MEIPASS'):
+    bundle_dir = sys._MEIPASS
+    
+    # This is the directory PyInstaller creates for your data_folders
+    # Mapping doclayout_path -> 'doclayout_yolo' in build.py results in this:
+    yolo_cfg_dir = os.path.join(bundle_dir, "doclayout_yolo", "cfg")
+    
+    # Force the library to look HERE for its YAML files
+    os.environ['YOLO_CONFIG_DIR'] = yolo_cfg_dir
+    # Some versions use this specific env var for the default config
+    os.environ['ULTRALYTICS_CONFIG_DIR'] = yolo_cfg_dir
 
-    # 2. FORCE-INJECT CRITICAL MODULES
-    # This ensures PyInstaller's hidden imports are correctly mapped in sys.modules
-    modules_to_ensure = ['shapely', 'pyclipper', 'lanms_neo', 'cv2']
-    for mod_name in modules_to_ensure:
-        try:
-            mod = __import__(mod_name)
-            sys.modules[mod_name] = mod
-        except ImportError:
-            pass
-
-    # 3. MEGA MONKEYPATCH (Bypass PaddleX Dependency Checks)
-    # We do this inside a function and catch exceptions to avoid "already initialized" errors
-    try:
-        import paddlex.utils.deps as paddlex_deps
-        
-        def mock_true(*args, **kwargs):
-            return True
-        
-        # Override all checker functions
-        paddlex_deps.require_extra = mock_true
-        paddlex_deps.require_deps = mock_true
-        paddlex_deps.require_all_deps = mock_true
-        if hasattr(paddlex_deps, 'check_dep'):
-            paddlex_deps.check_dep = mock_true
-            
-        print("🚀 PaddleX Dependency Checks Bypassed")
-    except Exception:
-        # If it fails, we keep going so the main app can try its own logic
-        pass
-
-# Execute the patches
-run_runtime_patches()
+# --- The Monkeypatch to bypass PaddleX checks ---
+try:
+    import paddlex.utils.deps as paddlex_deps
+    def mock_true(*args, **kwargs): return True
+    paddlex_deps.require_extra = mock_true
+    paddlex_deps.require_deps = mock_true
+    paddlex_deps.require_all_deps = mock_true
+    print("🚀 PaddleX Dependency Checks Bypassed")
+except Exception:
+    pass
