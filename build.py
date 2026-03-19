@@ -92,7 +92,8 @@ llama_path = os.path.dirname(llama_cpp.__file__)
 cmd_parts.append(f"--add-data={llama_path}{os.pathsep}llama_cpp")
 cmd_parts.append("--collect-data=paddlex")
 
-
+# Get the absolute path to the installed package
+doclayout_path = os.path.dirname(doclayout_yolo.__file__)
 # 2. Add root YAML files safely
 # We check if any yaml files actually exist before adding the flag
 yaml_files = glob.glob(os.path.join(doclayout_path, "*.yaml"))
