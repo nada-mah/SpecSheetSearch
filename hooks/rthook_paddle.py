@@ -12,6 +12,13 @@ if hasattr(sys, '_MEIPASS'):
     os.environ['YOLO_CONFIG_DIR'] = yolo_cfg_dir
     # Some versions use this specific env var for the default config
     os.environ['ULTRALYTICS_CONFIG_DIR'] = yolo_cfg_dir
+    # Add the bundle directory to the library search path for macOS
+    os.environ['DYLD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('DYLD_LIBRARY_PATH', '')
+    
+    # Also add to PATH just in case
+    os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
+    os.environ['LLAMA_CPP_LIB'] = os.path.join(bundle_dir, "llama_cpp")
+    
 
 # --- The Monkeypatch to bypass PaddleX checks ---
 try:

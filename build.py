@@ -21,7 +21,7 @@ if not Path("app/main.py").exists():
 doclayout_path = os.path.dirname(doclayout_yolo.__file__)
 paddle_path = os.path.dirname(paddle.__file__)
 llama_path = os.path.dirname(llama_cpp.__file__)
-
+llama_cpp_dir = str(Path(llama_cpp.__file__).parent)
 # 3️⃣ Define Data Folders
 # We include the entire doclayout_yolo folder to ensure cfg/default.yaml is present
 data_folders = [
@@ -30,6 +30,11 @@ data_folders = [
     (paddle_path, "paddle"),
     (llama_path, "llama_cpp"),
 ]
+# Specifically for llama-cpp-python, we often need to add the binaries directly
+# find all .dylib, .so, or .dll files in that folder
+for file in os.listdir(llama_cpp_dir):
+    if file.endswith(('.dylib', '.so', '.dll')):
+        data_folders.append((os.path.join(llama_cpp_dir, file), "."))
 
 # 4️⃣ Define Collections & Metadata
 collect_all = [
