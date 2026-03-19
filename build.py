@@ -15,7 +15,7 @@ from pathlib import Path
 import doclayout_yolo
 import llama_cpp
 import paddle
-
+import glob
 OUTPUT_NAME = "keySearch"
 SEP = os.pathsep 
 
@@ -93,21 +93,13 @@ cmd_parts.append(f"--add-data={llama_path}{os.pathsep}llama_cpp")
 cmd_parts.append("--collect-data=paddlex")
 
 
-# Get the absolute path to the installed package
-doclayout_path = os.path.dirname(doclayout_yolo.__file__)
-
-# Add the 'cfg' folder to your data_folders
-# We map it so it lands in 'doclayout_yolo/cfg' inside the bundle
-data_folders = [
-    ("app/*", "app"),
-    (os.path.join(doclayout_path, "cfg", "*"), "doclayout_yolo/cfg"),
-    # Add this if there are other yaml files in the root of the package
-    (os.path.join(doclayout_path, "*.yaml"), "doclayout_yolo"), 
-]
-
-# Ensure you use these in your pyinstaller command loop
-for src, dest in data_folders:
-    cmd_parts.append(f"--add-data={src}{os.pathsep}{dest}")
+# 2. Add root YAML files safely
+# We check if any yaml files actually exist before adding the flag
+yaml_files = glob.glob(os.path.join(doclayout_path, "*.yaml"))
+if yaml_files:
+    data_folders.append((os.path.join(doclayout_path, "*.yaml"), "doclayout_yolo"))
+else:
+    print(f"ℹ️ No root YAML files found in {doclayout_path}, skipping...")
 
 import importlib.metadata
 
