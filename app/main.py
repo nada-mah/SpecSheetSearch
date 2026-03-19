@@ -5,6 +5,26 @@ import shutil
 from process_lighting_spec_sheet import process_lighting_spec_sheet
 from model_loader import get_ocr_instance
 
+import os
+import sys
+import ctypes
+
+# CRITICAL: This must run BEFORE llama_cpp is imported
+if hasattr(sys, '_MEIPASS'):
+    bundle_dir = sys._MEIPASS
+    # Find the dylib path
+    # PyInstaller usually puts it in the root or a 'llama_cpp' folder
+    lib_path = os.path.join(bundle_dir, "llama_cpp", "libllama.dylib")
+    if not os.path.exists(lib_path):
+        lib_path = os.path.join(bundle_dir, "libllama.dylib")
+    
+    # Force load it into the process
+    if os.path.exists(lib_path):
+        try:
+            ctypes.CDLL(lib_path, mode=ctypes.RTLD_GLOBAL)
+            print(f"✅ Manually loaded llama shared library from {lib_path}")
+        except Exception as e:
+            print(f"⚠️ Failed to manually load: {e}")
 import sys
 sys.modules['0deeb2fec52624e647be__mypyc'] = None
 
