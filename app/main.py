@@ -1,3 +1,27 @@
+import ctypes
+
+# THIS MUST BE THE FIRST THING IN THE FILE
+if hasattr(sys, '_MEIPASS'):
+    bundle_dir = sys._MEIPASS
+    # Look for the dylib in both possible PyInstaller locations
+    lib_names = ["libllama.dylib", "llama_cpp/libllama.dylib"]
+    found_lib = None
+    
+    for name in lib_names:
+        full_path = os.path.join(bundle_dir, name)
+        if os.path.exists(full_path):
+            found_lib = full_path
+            break
+
+    if found_lib:
+        # Set environment variables for child processes
+        os.environ['LLAMA_CPP_LIB'] = found_lib
+        # Load globally so all sub-modules see it as 'already loaded'
+        try:
+            ctypes.CDLL(found_lib, mode=ctypes.RTLD_GLOBAL)
+            print(f"✅ Pre-loaded llama shared library: {found_lib}")
+        except Exception as e:
+            print(f"⚠️ Manual load failed: {e}")
 import argparse
 import glob
 import os
@@ -5,26 +29,7 @@ import shutil
 from process_lighting_spec_sheet import process_lighting_spec_sheet
 from model_loader import get_ocr_instance
 
-import os
-import sys
-import ctypes
 
-# CRITICAL: This must run BEFORE llama_cpp is imported
-if hasattr(sys, '_MEIPASS'):
-    bundle_dir = sys._MEIPASS
-    # Find the dylib path
-    # PyInstaller usually puts it in the root or a 'llama_cpp' folder
-    lib_path = os.path.join(bundle_dir, "llama_cpp", "libllama.dylib")
-    if not os.path.exists(lib_path):
-        lib_path = os.path.join(bundle_dir, "libllama.dylib")
-    
-    # Force load it into the process
-    if os.path.exists(lib_path):
-        try:
-            ctypes.CDLL(lib_path, mode=ctypes.RTLD_GLOBAL)
-            print(f"✅ Manually loaded llama shared library from {lib_path}")
-        except Exception as e:
-            print(f"⚠️ Failed to manually load: {e}")
 import sys
 sys.modules['0deeb2fec52624e647be__mypyc'] = None
 
