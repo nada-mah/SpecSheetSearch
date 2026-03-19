@@ -63,6 +63,20 @@ cmd_parts = [
     "--name=" + OUTPUT_NAME
 ]
 
+# 1. Path to the package
+llama_dir = os.path.dirname(llama_cpp.__file__)
+
+# 2. Find all dylibs
+dylibs = glob.glob(os.path.join(llama_dir, "*.dylib"))
+
+# 3. Add them as BINARIES instead of DATA
+# Format: (Source Path, Destination Folder inside Bundle)
+for dylib in dylibs:
+    # Adding to '.' (root) or 'llama_cpp'
+    cmd_parts.append(f"--add-binary={dylib}{SEP}.")
+    cmd_parts.append(f"--add-binary={dylib}{SEP}llama_cpp")
+    print(f"💎 Linking binary: {os.path.basename(dylib)}")
+    
 # Add Metadata
 for pkg in metadata_to_copy:
     try:
