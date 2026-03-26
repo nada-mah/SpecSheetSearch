@@ -18,6 +18,13 @@ if hasattr(sys, '_MEIPASS'):
     # Also add to PATH just in case
     os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
     os.environ['LLAMA_CPP_LIB'] = os.path.join(bundle_dir, "llama_cpp")
+    os.environ['LD_LIBRARY_PATH'] = sys._MEIPASS + ":" + os.environ.get('LD_LIBRARY_PATH', '')
+    
+    # CRITICAL: Disable oneDNN. This kills the buggy CPU path you saw in production.
+    os.environ['FLAGS_use_onednn'] = '0'
+    
+    # Optional: Force Paddle to use GPU 0 if available
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'    
     
 
 # --- The Monkeypatch to bypass PaddleX checks ---

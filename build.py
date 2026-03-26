@@ -7,7 +7,20 @@ import glob
 from pathlib import Path
 import doclayout_yolo
 import llama_cpp
-import paddle
+# --- THE FIX ---
+try:
+    import paddle
+    paddle_path = os.path.dirname(paddle.__file__)
+except ImportError as e:
+    # If it's just missing the CUDA lib, we can manually find the path
+    print("⚠️  Paddle GPU detected but CUDA driver missing. Manually locating path...")
+    import site
+    # Search for paddle in your site-packages
+    base_path = site.getsitepackages()[0]
+    paddle_path = os.path.join(base_path, "paddle")
+    if not os.path.exists(paddle_path):
+        raise RuntimeError("Could not find paddle directory in site-packages.") from e
+# ----------------
 
 OUTPUT_NAME = "keySearch"
 SEP = os.pathsep 
@@ -62,7 +75,15 @@ cmd_parts = [
     "--distpath=dist", "--workpath=build", "--specpath=.",
     "--name=" + OUTPUT_NAME
 ]
+# Add this to your "hidden_imports" section if not there
+hidden_imports += [
+    "paddle.libs", 
+    "paddle.base.core",
+    "paddle.jit"
+]
 
+# Add this to your "cmd_parts" to ensure it grabs the dynamic libs
+cmd_parts.append("--collect-submodules=paddle")
 # 1. Path to the package
 llama_dir = os.path.dirname(llama_cpp.__file__)
 
