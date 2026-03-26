@@ -8,20 +8,37 @@ from pathlib import Path
 import doclayout_yolo
 import llama_cpp
 # --- THE FIX ---
-try:
-    import paddle
-    paddle_path = os.path.dirname(paddle.__file__)
-except ImportError as e:
-    # If it's just missing the CUDA lib, we can manually find the path
-    print("⚠️  Paddle GPU detected but CUDA driver missing. Manually locating path...")
-    import site
-    # Search for paddle in your site-packages
-    base_path = site.getsitepackages()[0]
-    paddle_path = os.path.join(base_path, "paddle")
-    if not os.path.exists(paddle_path):
-        raise RuntimeError("Could not find paddle directory in site-packages.") from e
-# ----------------
+import os
+import sys
+import subprocess
+import importlib.util
+import importlib.metadata
+from pathlib import Path
 
+# --- ROBUST PADDLE PATH FINDING ---
+try:
+    # Try to find where paddle would be without fully initializing it
+    spec = importlib.util.find_spec("paddle")
+    if spec and spec.submodule_search_locations:
+        paddle_path = spec.submodule_search_locations[0]
+        print(f"✅ Found Paddle at: {paddle_path}")
+    else:
+        raise ImportError
+except (ImportError, AttributeError):
+    print("⚠️  Standard lookup failed. Searching site-packages...")
+    import site
+    # Look through all potential site-packages for a 'paddle' folder
+    possible_paths = [os.path.join(p, "paddle") for p in site.getsitepackages()]
+    paddle_path = next((p for p in possible_paths if os.path.exists(p)), None)
+    
+    if not paddle_path:
+        print("❌ Critical: Could not locate paddle directory. Is it installed?")
+        sys.exit(1)
+
+# Do the same for your other heavy imports to be safe
+doclayout_spec = importlib.util.find_spec("doclayout_yolo")
+doclayout_path = doclayout_spec.submodule_search_locations[0] if doclayout_spec else ""
+# ----------------------------------
 OUTPUT_NAME = "keySearch"
 SEP = os.pathsep 
 
@@ -32,7 +49,6 @@ if not Path("app/main.py").exists():
 
 # 2️⃣ Gather Pathing Info
 doclayout_path = os.path.dirname(doclayout_yolo.__file__)
-paddle_path = os.path.dirname(paddle.__file__)
 llama_path = os.path.dirname(llama_cpp.__file__)
 llama_cpp_dir = str(Path(llama_cpp.__file__).parent)
 # 3️⃣ Define Data Folders
