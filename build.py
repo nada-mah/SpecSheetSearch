@@ -75,15 +75,17 @@ cmd_parts.append("--collect-submodules=paddle")
 llama_dir = os.path.dirname(llama_cpp.__file__)
 
 # 2. Find all dylibs
-dylibs = glob.glob(os.path.join(llama_dir, "*.dylib"))
+# dylibs = glob.glob(os.path.join(llama_dir, "*.dylib"))
+# Find all dynamic libraries
+libs = glob.glob(os.path.join(llama_dir, "*.dylib")) + \
+       glob.glob(os.path.join(llama_dir, "*.so")) + \
+       glob.glob(os.path.join(llama_dir, "*.dll"))
 
-# 3. Add them as BINARIES instead of DATA
-# Format: (Source Path, Destination Folder inside Bundle)
-for dylib in dylibs:
-    # Adding to '.' (root) or 'llama_cpp'
-    cmd_parts.append(f"--add-binary={dylib}{SEP}.")
-    cmd_parts.append(f"--add-binary={dylib}{SEP}llama_cpp")
-    print(f"💎 Linking binary: {os.path.basename(dylib)}")
+for lib in libs:
+    cmd_parts.append(f"--add-binary={lib}{SEP}.")
+    cmd_parts.append(f"--add-binary={lib}{SEP}llama_cpp")
+    print(f"💎 Linking binary: {os.path.basename(lib)}")
+
     
 # Add Metadata
 for pkg in metadata_to_copy:

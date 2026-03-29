@@ -12,14 +12,41 @@ if hasattr(sys, '_MEIPASS'):
     os.environ['YOLO_CONFIG_DIR'] = yolo_cfg_dir
     # Some versions use this specific env var for the default config
     os.environ['ULTRALYTICS_CONFIG_DIR'] = yolo_cfg_dir
-    # Add the bundle directory to the library search path for macOS
-    os.environ['DYLD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('DYLD_LIBRARY_PATH', '')
-    
     # Also add to PATH just in case
     os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
     os.environ['LLAMA_CPP_LIB'] = os.path.join(bundle_dir, "llama_cpp")
-    
 
+# if sys.platform.startswith('linux'):
+#     # sys._MEIPASS is the path to the temporary folder where the app is unpacked
+#     meipass = getattr(sys, '_MEIPASS', None)
+#     if meipass:
+#         paddle_libs = os.path.join(meipass, 'paddle', 'libs')
+#         # Prepend paddle libs to the environment path
+#         os.environ['LD_LIBRARY_PATH'] = paddle_libs + ":" + os.environ.get('LD_LIBRARY_PATH', '')
+        
+#         print(f"🚀 PaddleX Dependency Checks Bypassed")
+#         print(f"✅ LD_LIBRARY_PATH set to: {paddle_libs}")
+# if sys.platform.startswith("darwin"):
+#     meipass = getattr(sys, '_MEIPASS', None)
+#     if meipass:
+#         paddle_libs = os.path.join(meipass, 'paddle', 'libs')
+#         # Prepend paddle libs to the environment path
+#         os.environ['DYLD_LIBRARY_PATH'] = paddle_libs + ":" + os.environ.get('DYLD_LIBRARY_PATH', '')
+        
+#         print(f"🚀 PaddleX Dependency Checks Bypassed")
+#         print(f"✅ DYLD_LIBRARY_PATH set to: {paddle_libs}")
+    
+if hasattr(sys, "_MEIPASS"):
+    meipass = sys._MEIPASS
+    paddle_libs = os.path.join(meipass, "paddle", "libs")
+
+    if sys.platform.startswith("linux"):
+        os.environ["LD_LIBRARY_PATH"] = paddle_libs + ":" + os.environ.get("LD_LIBRARY_PATH", "")
+        print(f"LD_LIBRARY_PATH set to: {paddle_libs}")
+
+    elif sys.platform == "darwin":
+        os.environ["DYLD_LIBRARY_PATH"] = paddle_libs + ":" + os.environ.get("DYLD_LIBRARY_PATH", "")
+        print(f"DYLD_LIBRARY_PATH set to: {paddle_libs}")
 # --- The Monkeypatch to bypass PaddleX checks ---
 try:
     import paddlex.utils.deps as paddlex_deps

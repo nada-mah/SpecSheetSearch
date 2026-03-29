@@ -69,7 +69,7 @@ pip install -r requirements.txt
 CORE_PATH="venv/lib/python3.12/site-packages/paddle/base/core.py"
 rm -f "$CORE_PATH"
 cp core.py "$CORE_PATH"
-pip install "llama-cpp-python==0.3.15"
+# pip install "llama-cpp-python==0.3.15"
 ```
 
 > This replaces `core.py` with a custom version to fix binary linkage issues.
