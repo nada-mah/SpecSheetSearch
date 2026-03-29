@@ -44,7 +44,7 @@ if hasattr(sys, "_MEIPASS"):
         os.environ["LD_LIBRARY_PATH"] = paddle_libs + ":" + os.environ.get("LD_LIBRARY_PATH", "")
         print(f"LD_LIBRARY_PATH set to: {paddle_libs}")
 
-    elif sys.platform == "darwin":
+    elif sys.platform.startswith('darwin'):
         os.environ["DYLD_LIBRARY_PATH"] = paddle_libs + ":" + os.environ.get("DYLD_LIBRARY_PATH", "")
         print(f"DYLD_LIBRARY_PATH set to: {paddle_libs}")
 # --- The Monkeypatch to bypass PaddleX checks ---
