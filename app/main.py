@@ -101,8 +101,11 @@ def main():
             shutil.move(pdf_path, dest)
 
         except Exception as e:
-            print(f"⚠️ Error processing {pdf_path}: {e}")
-            # Optionally move to an error folder (not implemented here)
+                    print(f"⚠️ Error processing {pdf_path}: {e}")
+                    filename = os.path.basename(pdf_path)
+                    dest = os.path.join(not_found_dir, filename)
+                    print(f"📁 Moving failed PDF {filename} to not_found folder")
+                    shutil.move(pdf_path, dest)
 
     print("\n✨ All done!")
 

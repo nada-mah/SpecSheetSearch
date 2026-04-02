@@ -130,6 +130,15 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
 
     extra_values_dict = {}
 
+    N_CTX = 12288
+    MAX_OUTPUT_TOKENS = 4096
+    PROMPT_TEMPLATE_TOKENS = 600  # Reserved for system prompt, key, expected_output formatting
+    CHARS_PER_TOKEN = 3  # Conservative estimate
+
+    # Derive max OCR chars dynamically from context budget
+    _input_token_budget = N_CTX - MAX_OUTPUT_TOKENS - PROMPT_TEMPLATE_TOKENS  # 7592 tokens
+    MAX_OCR_CONTEXT_CHARS = _input_token_budget * CHARS_PER_TOKEN 
+
     for key in key_matched:
         expected_output = key_matched[key].get("Expected Output Formatting")
         ocr_context_lines = build_ocr_context(ocr_key_hit, key)
@@ -141,6 +150,14 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
                     ocr_context_column.append(txt['text'])
         md_output = format_row_data_to_markdown(ocr_context_column, key)
         ocr_context = ocr_context_lines + '\n' + md_output
+
+        if len(ocr_context) > MAX_OCR_CONTEXT_CHARS:
+            logging.warning(
+                f"  ⚠️ OCR context for key '{key}' too large ({len(ocr_context)} chars), "
+                f"truncating to {MAX_OCR_CONTEXT_CHARS} chars to fit context window."
+            )
+            ocr_context = ocr_context[:MAX_OCR_CONTEXT_CHARS]
+
         value_prompt = get_value_prompt(key, expected_output, ocr_context)
         
         # FIXED: Corrected 'modelq' typo to 'model'
