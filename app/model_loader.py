@@ -229,12 +229,12 @@ def get_llm_instance(use_gpu=False):
         logger.info("✓ LLM model loaded successfully")
         
         # Post-load verification hints
-        if use_gpu and gpu_available:
-            logger.info("💡 GPU mode active - monitor with: watch -n 1 nvidia-smi")
-        elif use_gpu and not gpu_available:
-            logger.warning("⚠ Model loaded on CPU despite GPU request - check llama_cpp build")
-        else:
-            logger.info("✓ CPU mode active")
+        # if use_gpu and gpu_available:
+        #     logger.info("💡 GPU mode active - monitor with: watch -n 1 nvidia-smi")
+        # elif use_gpu and not gpu_available:
+        #     logger.warning("⚠ Model loaded on CPU despite GPU request - check llama_cpp build")
+        # else:
+        #     logger.info("✓ CPU mode active")
             
     except Exception as e:
         logger.error(f"✗ Failed to initialize LLM: {e}", exc_info=True)
