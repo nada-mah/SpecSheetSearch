@@ -64,43 +64,55 @@ except Exception as e:
 
 
 # ============================================================================
-# GPU Support Detection
+# GPU Support Detection (Updated for llama-cpp-python compatibility)
 # ============================================================================
 
 def check_gpu_support() -> bool:
     """
-    Check if llama_cpp was compiled with GPU support (CUDA/Metal/ROCm).
+    Check if llama_cpp was compiled with GPU support.
     Returns True if GPU offloading is available.
     """
     try:
-        from llama_cpp.llama_cpp import _load_shared_library
-        
-        # Try to load the llama shared library
-        lib = _load_shared_library('llama')
-        
-        # Check for GPU offload support function
-        if hasattr(lib, 'llama_supports_gpu_offload'):
-            result = bool(lib.llama_supports_gpu_offload())
-            logger.debug(f"GPU offload support check: {result}")
-            return result
-        else:
-            logger.debug("llama_supports_gpu_offload function not found in library")
-            return False
-            
+        # Method 1: Try the public API (llama-cpp-python >= 0.2.78)
+        from llama_cpp import llama_supports_gpu_offload
+        result = llama_supports_gpu_offload()
+        logger.debug(f"GPU support check (public API): {result}")
+        return bool(result)
     except ImportError:
-        logger.debug("Could not import _load_shared_library - trying fallback")
+        logger.debug("llama_supports_gpu_offload not available in this version")
     except Exception as e:
-        logger.debug(f"GPU support check failed (expected on some builds): {e}")
+        logger.debug(f"GPU support check failed: {e}")
     
-    # Fallback: check environment/CMAKE args hint
-    cmake_args = os.environ.get('CMAKE_ARGS', '')
-    if 'GGML_CUDA=on' in cmake_args or 'GGML_METAL=on' in cmake_args or 'GGML_ROCM=on' in cmake_args:
+    try:
+        # Method 2: Fallback - check if CUDA backend is available via ctypes
+        import llama_cpp.llama_cpp as cpp
+        lib = cpp._load_shared_library('llama') if hasattr(cpp, '_load_shared_library') else None
+        if lib and hasattr(lib, 'llama_supports_gpu_offload'):
+            result = bool(lib.llama_supports_gpu_offload())
+            logger.debug(f"GPU support check (ctypes fallback): {result}")
+            return result
+    except Exception as e:
+        logger.debug(f"ctypes fallback failed: {e}")
+    
+    # Method 3: Heuristic - check environment/build hints
+    cmake_args = os.environ.get('CMAKE_ARGS', '').lower()
+    if any(x in cmake_args for x in ['ggml_cuda=on', 'ggml_metal=on', 'ggml_rocm=on']):
         logger.info("GPU support likely enabled via CMAKE_ARGS")
         return True
     
-    logger.warning("Could not definitively determine GPU support - verify llama_cpp build")
+    # Method 4: Check if nvidia-smi works (Linux/Windows with NVIDIA)
+    try:
+        import subprocess
+        result = subprocess.run(['nvidia-smi'], capture_output=True, timeout=5)
+        if result.returncode == 0:
+            logger.info("NVIDIA GPU detected via nvidia-smi - GPU likely available")
+            return True
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    
+    logger.warning("Could not definitively determine GPU support - proceeding anyway")
+    logger.warning("💡 If GPU isn't used, reinstall: pip install llama-cpp-python --no-cache-dir -C cmake.args='-DGGML_CUDA=on'")
     return False
-
 
 # ============================================================================
 # Model Loading Functions
