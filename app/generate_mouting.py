@@ -51,18 +51,7 @@ Use double quotes for all keys and string values.
     return prompt
 
 
-def generate_llm_response(prompt, use_gpu=False):
-    llm = get_llm_instance(use_gpu)
-    response =  llm.create_chat_completion(
-    messages=[
-        # {
-            # "role": "system",
-            # # "content": "You are a helpful assistant that outputs in JSON format. Output only valid JSON. Ensure all keys are quoted, no duplicate keys exist, and arrays contain uniform types.",
-            # # "content": "You are a JSON-specialized assistant with strict formatting requirements. Your output MUST: 1) Be valid JSON (validate with JSONLint) 2) Quote all keys with double quotes 3) No duplicate keys 4) Arrays with uniform types only 5) Use proper escaping for special characters 6) Match the exact schema shown in the example 7) Never include markdown formatting. Prioritize format validity over content completeness. Output only the JSON object without additional text.",
-            # "content": "You are a JSON-specialized assistant with strict formatting requirements. first think about your task. Your output MUST: 1) Be valid JSON (validate with JSONLint) 2) Quote all keys with double quotes 3) No duplicate keys 4) Arrays with uniform types only 5) Use proper escaping for special characters 6) Match the exact schema shown in the example. Always Reply in this format: 'Thoughts': { brief reasoning:}, 'JSON': {}",
-            {
-            "role": "system",
-            "content": """You are Qwen, created by Alibaba Cloud. You are a helpful assistant. You are a JSON-specialized assistant with strict formatting rules. Do not output markdown or natural language. Do not overthink or explain your steps. Think carefully and analyze the input thoroughly before responding. Your output MUST:
+_DEFAULT_JSON_SYSTEM_PROMPT = """You are Qwen, created by Alibaba Cloud. You are a helpful assistant. You are a JSON-specialized assistant with strict formatting rules. Do not output markdown or natural language. Do not overthink or explain your steps. Think carefully and analyze the input thoroughly before responding. Your output MUST:
 
             1. Be valid JSON (passes JSONLint)
             2. Quote all keys with double quotes
@@ -74,14 +63,23 @@ def generate_llm_response(prompt, use_gpu=False):
             Output only the JSON object. Nothing else.
             \no_think
             """
-            },
-        {"role": "user", "content": prompt},
-    ],
-    temperature=0.9,
-    max_tokens=4096,
-    top_p=10,
+
+def generate_llm_response(prompt, use_gpu=False, system_prompt=_DEFAULT_JSON_SYSTEM_PROMPT):
+    llm = get_llm_instance(use_gpu)
+    messages = []
+    if system_prompt is not None:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+    print(f"[DEBUG][generate_llm_response] system_prompt={'<none>' if system_prompt is None else system_prompt[:80] + '...'}")
+    print(f"[DEBUG][generate_llm_response] sending {len(messages)} message(s) to llama_cpp")
+    response = llm.create_chat_completion(
+        messages=messages,
+        temperature=0.9,
+        max_tokens=4096,
+        top_p=0.9,
     )
     content = response["choices"][0]["message"]['content']
+    print(f"[DEBUG][generate_llm_response] raw llama_cpp content:\n{content}")
     return content
 
 def load_schema_and_derive_product_types(schema_path):
