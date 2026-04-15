@@ -140,14 +140,14 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
     MAX_OCR_CONTEXT_CHARS = _input_token_budget * CHARS_PER_TOKEN 
 
     for key in key_matched:
-        print(f"\n{'='*60}")
-        print(f"[DEBUG] Processing key: '{key}'")
+        # print(f"\n{'='*60}")
+        # print(f"[DEBUG] Processing key: '{key}'")
 
         expected_output = key_matched[key].get("Expected Output Formatting")
-        print(f"[DEBUG] expected_output: {expected_output}")
+        # print(f"[DEBUG] expected_output: {expected_output}")
 
         ocr_context_lines = build_ocr_context(ocr_key_hit, key)
-        print(f"[DEBUG] ocr_context_lines ({len(ocr_context_lines)} chars):\n{ocr_context_lines}")
+        # print(f"[DEBUG] ocr_context_lines ({len(ocr_context_lines)} chars):\n{ocr_context_lines}")
 
         ocr_context_column = []
         for row in row_for_key_data:
@@ -155,16 +155,16 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
                 texts = row.get('text')
                 for txt in texts:
                     ocr_context_column.append(txt['text'])
-        print(f"[DEBUG] ocr_context_column ({len(ocr_context_column)} items): {ocr_context_column}")
+        # print(f"[DEBUG] ocr_context_column ({len(ocr_context_column)} items): {ocr_context_column}")
 
         md_output = format_row_data_to_markdown(ocr_context_column, key)
-        print(f"[DEBUG] md_output:\n{md_output}")
+        # print(f"[DEBUG] md_output:\n{md_output}")
 
         ocr_context = ocr_context_lines + '\n' + md_output
-        print(f"[DEBUG] ocr_context total length: {len(ocr_context)} chars")
+        # print(f"[DEBUG] ocr_context total length: {len(ocr_context)} chars")
 
         if len(ocr_context) > MAX_OCR_CONTEXT_CHARS:
-            print(f"[DEBUG] WARNING: context too large ({len(ocr_context)} chars), truncating to {MAX_OCR_CONTEXT_CHARS}")
+            # print(f"[DEBUG] WARNING: context too large ({len(ocr_context)} chars), truncating to {MAX_OCR_CONTEXT_CHARS}")
             logging.warning(
                 f"  ⚠️ OCR context for key '{key}' too large ({len(ocr_context)} chars), "
                 f"truncating to {MAX_OCR_CONTEXT_CHARS} chars to fit context window."
@@ -172,19 +172,20 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
             ocr_context = ocr_context[:MAX_OCR_CONTEXT_CHARS]
 
         value_prompt = get_value_prompt(key, expected_output, ocr_context)
-        print(f"[DEBUG] value_prompt:\n{value_prompt}")
+        # print(f"[DEBUG] value_prompt:\n{value_prompt}")
 
         response = generate_llm_response(value_prompt, use_gpu=use_gpu, system_prompt=None)
-        print(f"[DEBUG] raw LLM response (type={type(response).__name__}):\n{response}")
+        # print(f"[DEBUG] raw LLM response (type={type(response).__name__}):\n{response}")
 
         if response:
             cleaned_response = [item.strip() for item in response.split('\n') if item.strip()]
-            print(f"[DEBUG] cleaned_response: {cleaned_response}")
+            # print(f"[DEBUG] cleaned_response: {cleaned_response}")
             extra_values_dict[key] = {
                 "possible_extra_values": cleaned_response
             }
         else:
-            print(f"[DEBUG] response was empty/falsy, skipping key '{key}'")
+            # print(f"[DEBUG] response was empty/falsy, skipping key '{key}'")
+            pass
 
     # Step 10: Refine by value hits
     logging.info("  → Checking for matching values in text...")

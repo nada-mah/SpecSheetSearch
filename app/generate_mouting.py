@@ -70,8 +70,8 @@ def generate_llm_response(prompt, use_gpu=False, system_prompt=_DEFAULT_JSON_SYS
     if system_prompt is not None:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
-    print(f"[DEBUG][generate_llm_response] system_prompt={'<none>' if system_prompt is None else system_prompt[:80] + '...'}")
-    print(f"[DEBUG][generate_llm_response] sending {len(messages)} message(s) to llama_cpp")
+    # print(f"[DEBUG][generate_llm_response] system_prompt={'<none>' if system_prompt is None else system_prompt[:80] + '...'}")
+    # print(f"[DEBUG][generate_llm_response] sending {len(messages)} message(s) to llama_cpp")
     response = llm.create_chat_completion(
         messages=messages,
         temperature=0.9,
@@ -79,7 +79,7 @@ def generate_llm_response(prompt, use_gpu=False, system_prompt=_DEFAULT_JSON_SYS
         top_p=0.9,
     )
     content = response["choices"][0]["message"]['content']
-    print(f"[DEBUG][generate_llm_response] raw llama_cpp content:\n{content}")
+    # print(f"[DEBUG][generate_llm_response] raw llama_cpp content:\n{content}")
     return content
 
 def load_schema_and_derive_product_types(schema_path):
