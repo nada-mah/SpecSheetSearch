@@ -1,50 +1,52 @@
 import logging
 import itertools
 
-def generate_ocr_variants(term):
+def generate_ocr_variants(term, max_variants=10000):
     """
     Generates common OCR-friendly variants for a string/number.
-    Example: '109' -> ['109', '1o9', 'l09', 'IO9']
+    Example: '109' -> ['109', '1o9', 'l09', 'lo9']
+
+    If the number of combinations would exceed max_variants, each ambiguous
+    character is limited to its 2 most likely substitutions (original + top
+    substitute) to keep the result set manageable.
     """
     term = str(term)
-    original_lower = term.lower()
-    variants = {original_lower}
 
-    # Map common OCR confusions
+    # All values are lowercase — no uppercase needed since we lowercase everything
     ocr_map = {
-        '0': ['0', 'o', 'O'],
-        '1': ['1', 'l', 'I', 'i'],
-        'i': ['i', 'l', '1', 'I'],
-        'l': ['l', 'i', '1', 'I'],
-        '5': ['5', 'S', 's'],
-        '8': ['8', 'B'],
+        '0': ['0', 'o'],
+        '1': ['1', 'l', 'i'],
+        'i': ['i', 'l', '1'],
+        'l': ['l', 'i', '1'],
+        '5': ['5', 's'],
+        '8': ['8', 'b'],
         '9': ['9', 'g', 'q'],
-        '2': ['2', 'Z', 'z'],
-        '6': ['6', 'G', 'b']
+        '2': ['2', 'z'],
+        '6': ['6', 'g', 'b'],
     }
 
-    # Build character options using lowercase base
+    # Build options per character, deduplicating within each position
     chars_options = []
-    for c in term:
-        c_lower = c.lower()
-        replacements = ocr_map.get(c_lower, [c_lower])
-        # Ensure all choices are lowercase to avoid case-related duplication
-        chars_options.append([r.lower() for r in replacements])
+    for c in term.lower():
+        seen = set()
+        opts = [r for r in ocr_map.get(c, [c]) if not (r in seen or seen.add(r))]
+        chars_options.append(opts)
 
-    # Generate all combinations
+    # Compute total combinations
     total_combos = 1
-    for options in chars_options:
-        total_combos *= len(options)
-    
-    # Optional: warn if combinatorial explosion (e.g., >10k variants)
-    if total_combos > 10000:
-        logging.warning(f"Large number of OCR variants generated for '{term}' ({total_combos} combinations). Performance may be affected.")
+    for opts in chars_options:
+        total_combos *= len(opts)
 
-    for combo in itertools.product(*chars_options):
-        variants.add(''.join(combo))
+    # If explosion, trim each position to at most 2 options (original + top substitute)
+    if total_combos > max_variants:
+        chars_options = [opts[:2] for opts in chars_options]
+        reduced = 1
+        for opts in chars_options:
+            reduced *= len(opts)
+        logging.debug(
+            f"OCR variants for '{term}' capped: {total_combos} → {reduced} combinations."
+        )
 
-    variant_list = sorted(variants)
-    logging.debug(f"Generated {len(variant_list)} OCR variant(s) for term '{term}': {variant_list}")
-    return variant_list
-
-
+    variants = sorted({''.join(combo) for combo in itertools.product(*chars_options)})
+    logging.debug(f"Generated {len(variants)} OCR variant(s) for term '{term}': {variants}")
+    return variants
