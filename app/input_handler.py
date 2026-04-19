@@ -80,13 +80,27 @@ def save_llm_output(response, output_dir="final_result", base_name="output"):
 
 def save_final_result(final_result, output_dir="final_result", base_name="output"):
     output_path = os.path.join(output_dir, f"final_result_{base_name}.json")
-    
-    # Ensure output directory exists
+
     os.makedirs(output_dir, exist_ok=True)
-    
+
+    # Strip false values from the values dict before saving
+    cleaned = {}
+    for attr_name, attr_obj in final_result.items():
+        new_attr = {k: v for k, v in attr_obj.items() if k not in ("values", "_extra_value_keys")}
+        raw_values = attr_obj.get("values", {})
+        extra_keys = attr_obj.get("_extra_value_keys", set())
+        if isinstance(raw_values, dict):
+            new_attr["values"] = {
+                v: state for v, state in raw_values.items()
+                if state is True or v not in extra_keys
+            }
+        else:
+            new_attr["values"] = raw_values
+        cleaned[attr_name] = new_attr
+
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(final_result, f, indent=2, ensure_ascii=False)
-    
+        json.dump(cleaned, f, indent=2, ensure_ascii=False)
+
     logging.info(f"Final result saved to: {output_path}")
     
 def merge_match_results(*result_pairs):
