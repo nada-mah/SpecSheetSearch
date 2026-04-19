@@ -170,15 +170,130 @@ def find_hits(big_text: str, search_terms):
     # logging.debug(f"Key search complete. Found {len(matched_keys)} matching key(s): {sorted(matched_keys)}")
     # return matched_keys
 
+_GENERIC_MOUNTINGS = {"surface"}
+_NAME_STOP_WORDS = {
+    "and", "or", "the", "for", "with", "in", "of", "by", "to",
+    "led", "light", "lamp", "lighting", "luminaire", "fixture",
+}
+# Words that describe a property but aren't distinctive enough to confirm a product type
+# on their own — require a non-qualifier token to also match.
+_QUALIFIER_WORDS = {
+    "compliant", "enabled", "approved", "certified", "rated", "listed",
+    "compatible", "integrated", "capable", "ready",
+}
+
+
+def _extract_name_tokens(ptype):
+    """
+    Returns (content_tokens, qualifier_tokens) for a product type name.
+
+    Content tokens: distinctive words that identify the product category.
+    Qualifier tokens: descriptive words ("compliant", "enabled") that are too
+    generic to match alone — they only count if a content token also matched.
+
+    Abbreviations (all-caps ≥ 2 chars, like DLC, JA8) and short mixed-case tokens
+    (like PoE) are treated as content tokens regardless of length.
+    """
+    orig_words = re.findall(r"\w+", ptype)
+    content, qualifiers = set(), set()
+    for orig_w in orig_words:
+        w = orig_w.lower()
+        if w in _NAME_STOP_WORDS:
+            continue
+        is_abbrev = orig_w.upper() == orig_w and len(orig_w) >= 2 and orig_w.isalnum()
+        is_short_mixed = len(orig_w) >= 2 and any(c.isupper() for c in orig_w) and len(orig_w) <= 5
+        if not (len(w) >= 4 or is_abbrev or is_short_mixed):
+            continue
+        bucket = qualifiers if w in _QUALIFIER_WORDS else content
+        bucket.add(w)
+        if w not in _QUALIFIER_WORDS and len(w) > 4 and not is_abbrev and not is_short_mixed:
+            if w.endswith("es") and len(w) > 5:
+                content.add(w[:-2])
+            elif w.endswith("s"):
+                content.add(w[:-1])
+    return sorted(content), sorted(qualifiers)
+
+
+def _compact(s):
+    """Lowercase + strip non-alphanumeric — collapses 'high bay' → 'highbay'."""
+    return re.sub(r"[^a-z0-9]+", "", s.lower())
+
+
+_LOOKUP_INDEX_CACHE = {}
+
+
+def _preprocess_lookup(lookup):
+    """
+    One-time preprocessing of the product-type lookup.
+    Cached by object id so the same in-memory lookup isn't reprocessed
+    across multiple PDFs in the same run.
+    """
+    cache_key = id(lookup)
+    cached = _LOOKUP_INDEX_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    index = {}
+    for ptype, val in lookup.items():
+        mounting_terms = [val] if isinstance(val, str) else (val if isinstance(val, list) else [])
+        specific = [m for m in mounting_terms if m and m.strip().lower() not in _GENERIC_MOUNTINGS]
+        content_tokens, qualifier_tokens = _extract_name_tokens(ptype)
+        index[ptype] = {
+            "content_tokens": content_tokens,
+            "qualifier_tokens": qualifier_tokens,
+            "mounting_terms": specific,
+        }
+    _LOOKUP_INDEX_CACHE[cache_key] = index
+    return index
+
+
 def match_product_types_via_lookup(big_text, lookup):
+    """
+    Detect which product types from the lookup are present in the OCR text.
+
+    Primary: match product type name tokens (incl. singular + compact-text
+    fallback so 'Highbay' matches 'high bay' and 'Pendants' matches 'pendant').
+    Fallback: match mounting word(s), excluding overly-generic mountings like
+    'surface' which appear in virtually every spec sheet.
+    """
     logging.debug(f"Matching product types against {len(lookup)} lookup entries...")
-    matched_product_types = {
-        ptype
-        for ptype, val in lookup.items()
-        if find_hits(big_text, val)
-    }
-    logging.debug(f"Matched {len(matched_product_types)} product type(s): {sorted(matched_product_types)}")
-    return matched_product_types
+    index = _preprocess_lookup(lookup)
+
+    big_text_lower = big_text.lower()
+    big_text_compact = _compact(big_text)
+    matched = set()
+
+    def _token_in_text(token):
+        for variant in generate_ocr_variants(token):
+            if variant in big_text_lower or variant in big_text_compact:
+                return True
+        return False
+
+    for ptype, entry in index.items():
+        # --- Primary: name-token match ---
+        # A content token must match. If there are no content tokens (edge case),
+        # fall back to any qualifier token.
+        content_tokens = entry["content_tokens"]
+        qualifier_tokens = entry["qualifier_tokens"]
+
+        if content_tokens:
+            name_hit = any(_token_in_text(t) for t in content_tokens)
+        else:
+            # Only qualifiers left — require all of them to reduce false positives
+            name_hit = bool(qualifier_tokens) and all(_token_in_text(t) for t in qualifier_tokens)
+
+        if name_hit:
+            logging.debug(f"✅ '{ptype}' matched by name.")
+            matched.add(ptype)
+            continue
+
+        # --- Fallback: specific identifier terms from lookup ---
+        if entry["mounting_terms"] and find_hits(big_text, entry["mounting_terms"]):
+            logging.debug(f"✅ '{ptype}' matched by identifier fallback: {entry['mounting_terms']}")
+            matched.add(ptype)
+
+    logging.debug(f"Matched {len(matched)} product type(s): {sorted(matched)}")
+    return matched
 
 
 def split_schema_by_product_type_match(schema, matched_product_types):
@@ -421,6 +536,7 @@ def refine_by_value_hits(key_matched, key_not_matched, big_text, extra_values_di
         possible_extras = [str(v).strip(' "[]\'') for v in possible_extras]
 
         # Only add extras if they match
+        added_extra_keys = set()
         for extra_val in possible_extras:
             extra_norm = normalize_space(extra_val)
             if extra_norm:
@@ -428,11 +544,18 @@ def refine_by_value_hits(key_matched, key_not_matched, big_text, extra_values_di
                 pattern = re.compile(re.escape(extra_norm))
                 if pattern.search(big_text_norm):
                     value_map[extra_val] = True
+                    added_extra_keys.add(extra_val)
                     any_hit = True
 
         # --- Finalize ---
         new_obj = attr.copy()
         new_obj["values"] = value_map
+        new_obj["_extra_value_keys"] = added_extra_keys
+
+        # Preserve Expected Output Formatting from original schema object
+        expected_output = key_matched[key].get("Expected Output Formatting")
+        if expected_output is not None:
+            new_obj["Expected Output Formatting"] = expected_output
 
         if any_hit:
             value_matched[key] = new_obj
