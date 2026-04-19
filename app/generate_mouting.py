@@ -6,46 +6,38 @@ from  model_loader import get_llm_instance
 
 def build_mounting_prompt(product_type_set):
     prompt = f'''
-You are a helpful assistant. You are a lighting product domain expert focused on lighting manufacturers and their products.
-Your knowledge domain is defined by information typically found in:
-Manufacturer spec sheets
-Product cut sheets
-Digital spec sheets / digital cutsheets
-Lighting Exchange product listings
-You understand lighting products across all categories, including architectural, commercial, residential, industrial, outdoor, emergency, and lighting controls.
-You are given a list of lighting product types.
+You are a lighting product domain expert.
+You are given a list of lighting product type names:
 {product_type_set}
 
-For each product type, identify the most typical mounting description based on common lighting manufacturer specifications and industry usage.
+For each product type, return a JSON array of 1-4 identifying keywords.
+These keywords must be terms that would literally appear in a manufacturer spec sheet for that product, and that distinguish it from other product categories.
 
-If a product type commonly uses more than one mounting description, return a list of mounting words ordered from most specific to most general.
+Apply these rules based on what kind of name it is:
 
-Mounting descriptions should use common lighting-industry terms.
+RULE 1 — Abbreviation / certification / compliance / program labels
+  (names that are acronyms, certifications, compliance programs, or industry labels)
+  → Return only the abbreviation(s) or the exact label phrase. Do NOT add generic descriptors.
+  Pattern: ["<ACRONYM>"] or ["<label phrase>"]
 
-**Examples of typical mounting terms include, but are not limited to:**
+RULE 2 — Physical fixture or application type
+  (names describing a physical product or application)
+  → Return the mounting style and/or the most specific product descriptor or alias.
+  Pattern: ["<mounting>", "<descriptor>", "<alias if any>"]
 
-- **Primary mounting styles:**
-  recessed, surface, suspended, pendant, wall, pole, ceiling, ingrade, ground
+RULE 3 — Avoid these generic terms entirely — they appear in all spec sheets and provide no discrimination:
+  "surface", "light", "lamp", "LED", "luminaire", "fixture", "indoor", "outdoor", "unit", "system", "product"
 
-- **Mounting methods and supports:**
-  cable, stem, chain, truss, canopy, magnetic, junction
+RULE 4 — Case:
+  Lowercase for physical/mounting terms.
+  Preserve standard case for abbreviations and acronyms.
 
-- **Specialized or application-specific mountings:**
-  portable, underwater, submersible, highmast, stake, bracket, arm
+RULE 5 — Compound product names that use "and", "&", or "/" may describe two sub-categories.
+  Include aliases for each sub-category so either can trigger a match.
 
-Use these examples as guidance rather than a strict list.
-Prefer widely recognized industry terminology over generic physical descriptions.
-Respond with JSON only.
-
-Each key must be the original product type.
-Each value must be either:
-
-- a single mounting word
-
-Do not include explanations, comments, markdown, or any text outside the JSON object.
-Return ONLY valid JSON.
-Do not include explanations, markdown, or comments.
-Use double quotes for all keys and string values. 
+Each key must be the exact original product type string from the input list.
+Each value must be a JSON array of strings — never a plain string, never an empty array.
+Return ONLY valid JSON. No markdown, no comments, no explanations.
 /no_think
 '''
     return prompt
