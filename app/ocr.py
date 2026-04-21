@@ -1,7 +1,11 @@
-from paddleocr import PaddleOCR
+# from paddleocr import PaddleOCR  # replaced by Mistral OCR
 import re
 import logging
-import numpy as np
+# import numpy as np  # only needed by PaddleOCR version
+import os
+import base64
+from io import BytesIO
+from mistralai import Mistral
 
 # Phrases that unambiguously mark a page as photometric test data
 _PHOTOMETRIC_MARKERS = [
@@ -78,14 +82,69 @@ def filter_spec_pages(images, ocr_results):
     return list(filtered_images), list(filtered_ocr)
 
 
-def get_ocr_object_per_page(images,ocr):
-  ocr_results =[]
-  for image in images:
-    np_img = np.asarray(image)
-    res = ocr.predict(np_img)
-    if res:
-      ocr_results.append(res)
-  return ocr_results
+# def get_ocr_object_per_page(images, ocr):  # PaddleOCR version — replaced by Mistral
+#   ocr_results = []
+#   for image in images:
+#     np_img = np.asarray(image)
+#     res = ocr.predict(np_img)
+#     if res:
+#       ocr_results.append(res)
+#   return ocr_results
+
+
+def get_ocr_object_per_page(images, api_key=None):
+    """
+    Mistral OCR replacement. Returns the same structure as the PaddleOCR version:
+      [ [{"rec_texts": [...], "rec_polys": [...], "rec_scores": [...]}], ... ]
+
+    rec_polys are synthetic evenly-spaced horizontal strips sized to the image,
+    so all downstream spatial functions remain compatible.
+    """
+    if api_key is None:
+        api_key = os.environ.get("MISTRAL_API_KEY")
+
+    client = Mistral(api_key=api_key)
+    ocr_results = []
+
+    for img in images:
+        w, h = img.size
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        img_b64 = base64.b64encode(buffered.getvalue()).decode()
+
+        try:
+            response = client.ocr.process(
+                model="mistral-ocr-latest",
+                document={
+                    "type": "image_url",
+                    "image_url": f"data:image/png;base64,{img_b64}",
+                },
+            )
+            page = response.pages[0] if response.pages else None
+            lines = [l.strip() for l in page.markdown.split("\n") if l.strip()] if page else []
+        except Exception as e:
+            logging.warning(f"Mistral OCR failed for page: {e}")
+            lines = []
+
+        n = len(lines)
+        if n:
+            rec_polys = [
+                [[0, int(i * h / n)], [w, int(i * h / n)],
+                 [w, int((i + 1) * h / n)], [0, int((i + 1) * h / n)]]
+                for i in range(n)
+            ]
+            rec_scores = [1.0] * n
+        else:
+            rec_polys = []
+            rec_scores = []
+
+        ocr_results.append([{
+            "rec_texts": lines,
+            "rec_polys": rec_polys,
+            "rec_scores": rec_scores,
+        }])
+
+    return ocr_results
 
 def build_full_ocr_text(ocr_results):
     # Collect all text snippets into a list first

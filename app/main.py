@@ -74,7 +74,7 @@ if hasattr(sys, '_MEIPASS'):
 # IMPORTS (After logging setup and llama patch)
 # ============================================================================
 from process_lighting_spec_sheet import process_lighting_spec_sheet
-from model_loader import get_ocr_instance, get_llm_instance, check_gpu_support
+from model_loader import get_llm_instance, check_gpu_support  # get_ocr_instance removed (Mistral OCR)
 
 # Suppress mypyc import errors in bundled builds
 sys.modules['0deeb2fec52624e647be__mypyc'] = None
@@ -145,14 +145,10 @@ Examples:
                 "💡 Reinstall with: pip install llama-cpp-python --no-cache-dir -C cmake.args='-DGGML_CUDA=on'"
             )
     
-    # Warm up models (OCR + LLM) before processing loop
+    # Warm up models before processing loop
+    # OCR warmup removed — Mistral OCR is stateless (API call per page, no local model)
     try:
-        logger.info("🔄 Warming up OCR engine...")
-        ocr_engine = get_ocr_instance()
-        logger.info("✓ OCR engine ready")
-        
         if args.gpu or _VERBOSE_FLAG:
-            # Only initialize LLM if GPU mode or verbose (to see loading logs)
             logger.info("🔄 Warming up LLM (this may take 30-60s on first run)...")
             llm = get_llm_instance(use_gpu=args.gpu)
             logger.info("✓ LLM ready")
@@ -186,7 +182,6 @@ Examples:
             is_hit = process_lighting_spec_sheet(
                 pdf_path,
                 schema_path,
-                ocr_engine,
                 output_dir=output_dir,
                 use_gpu=args.gpu
             )

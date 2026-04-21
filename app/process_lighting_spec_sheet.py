@@ -24,7 +24,7 @@ from  generate_mouting import generate_llm_response
 from ocr import build_full_ocr_text
 from extract_txt_form_expected import format_row_data_to_markdown, get_value_prompt, build_ocr_context
 
-def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="final_result", use_gpu=False):
+def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result", use_gpu=False):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     logging.info(f"📄 Processing spec sheet: {base_name}.pdf")
 
@@ -32,9 +32,9 @@ def process_lighting_spec_sheet(pdf_path, schema_path, ocr_engine, output_dir="f
     logging.info("  → Converting PDF to images...")
     images = convert_pdf_with_pymupdf(pdf_path)
     images = images[:3]   # Limit to first 3 pages for efficiency; adjust as needed
-    # Step 2: OCR
-    logging.info("  → Running OCR on all pages...")
-    ocr_results = get_ocr_object_per_page(images, ocr_engine)
+    # Step 2: OCR (Mistral)
+    logging.info("  → Running OCR on all pages (Mistral)...")
+    ocr_results = get_ocr_object_per_page(images)
 
     # Step 2.5: Drop photometric-only pages (contamination guard)
     logging.info("  → Classifying pages and filtering photometric data pages...")
