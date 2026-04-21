@@ -1,7 +1,7 @@
-# from paddleocr import PaddleOCR  # replaced by Mistral OCR
+from paddleocr import PaddleOCR
 import re
 import logging
-# import numpy as np  # only needed by PaddleOCR version
+import numpy as np
 import os
 from pathlib import Path
 from mistralai.client import Mistral
@@ -81,32 +81,30 @@ def filter_spec_pages(images, ocr_results):
     return list(filtered_images), list(filtered_ocr)
 
 
-# def get_ocr_object_per_page(images, ocr):  # PaddleOCR version — replaced by Mistral
-#   ocr_results = []
-#   for image in images:
-#     np_img = np.asarray(image)
-#     res = ocr.predict(np_img)
-#     if res:
-#       ocr_results.append(res)
-#   return ocr_results
+def get_ocr_object_per_page_paddle(images, ocr_engine):
+    ocr_results = []
+    for image in images:
+        np_img = np.asarray(image)
+        res = ocr_engine.predict(np_img)
+        if res:
+            ocr_results.append(res)
+    return ocr_results
 
 
-def get_ocr_object_per_page(pdf_path, images, api_key=None):
+def get_ocr_object_per_page_mistral(pdf_path, images, api_key=None):
     """
-    Mistral OCR replacement. Uploads the PDF once, gets all pages, returns the
-    same structure as the PaddleOCR version:
+    Mistral OCR backend. Uploads the PDF once, returns the same structure as
+    get_ocr_object_per_page_paddle:
       [ [{"rec_texts": [...], "rec_polys": [...], "rec_scores": [...]}], ... ]
 
-    images is required only for deriving per-page pixel dimensions so that the
-    synthetic rec_polys stay in the same coordinate space used by YOLO table
-    detection downstream.
+    images provides per-page pixel dimensions for synthetic rec_polys so that
+    downstream spatial functions stay in the same coordinate space as YOLO.
     """
     if api_key is None:
         api_key = os.environ.get("MISTRAL_API_KEY")
 
     client = Mistral(api_key=api_key)
 
-    # Upload PDF and run OCR in one shot
     pdf_bytes = Path(pdf_path).read_bytes()
     uploaded = client.files.upload(
         file={"file_name": Path(pdf_path).name, "content": pdf_bytes},
@@ -121,22 +119,18 @@ def get_ocr_object_per_page(pdf_path, images, api_key=None):
     pages = response_dict.get("pages", [])
 
     ocr_results = []
-    for i, page in enumerate(pages):
-        # Use the corresponding PIL image size if available, else fall back to 1000×1000
-        if i < len(images):
-            w, h = images[i].size
-        else:
-            w, h = 1000, 1000
+    for page_idx, page in enumerate(pages):
+        w, h = images[page_idx].size if page_idx < len(images) else (1000, 1000)
 
         markdown = page.get("markdown", "")
-        lines = [l.strip() for l in markdown.split("\n") if l.strip()]
+        lines = [ln.strip() for ln in markdown.split("\n") if ln.strip()]
 
         n = len(lines)
         if n:
             rec_polys = [
-                [[0, int(i * h / n)], [w, int(i * h / n)],
-                 [w, int((i + 1) * h / n)], [0, int((i + 1) * h / n)]]
-                for i in range(n)
+                [[0, int(li * h / n)], [w, int(li * h / n)],
+                 [w, int((li + 1) * h / n)], [0, int((li + 1) * h / n)]]
+                for li in range(n)
             ]
             rec_scores = [1.0] * n
         else:

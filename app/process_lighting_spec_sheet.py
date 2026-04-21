@@ -3,7 +3,7 @@ import logging
 import json
 from  model_loader import get_qwen_model_path, get_yolo_model_path
 from  input_handler import convert_pdf_with_pymupdf
-from  ocr import get_ocr_object_per_page
+from ocr import get_ocr_object_per_page_paddle, get_ocr_object_per_page_mistral
 from  generate_mouting import (
     build_mounting_prompt,
     get_valid_json,
@@ -24,7 +24,7 @@ from  generate_mouting import generate_llm_response
 from ocr import build_full_ocr_text
 from extract_txt_form_expected import format_row_data_to_markdown, get_value_prompt, build_ocr_context
 
-def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result", use_gpu=False):
+def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result", use_gpu=False, ocr_backend="paddle", ocr_engine=None):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     logging.info(f"📄 Processing spec sheet: {base_name}.pdf")
 
@@ -32,10 +32,14 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     logging.info("  → Converting PDF to images...")
     images = convert_pdf_with_pymupdf(pdf_path)
     images = images[:3]   # Limit to first 3 pages for efficiency; adjust as needed
-    # Step 2: OCR (Mistral) — uploads PDF once, all pages returned together
-    logging.info("  → Running OCR on all pages (Mistral)...")
-    ocr_results = get_ocr_object_per_page(pdf_path, images)
-    ocr_results = ocr_results[:len(images)]  # align page count with images
+
+    # Step 2: OCR
+    logging.info(f"  → Running OCR on all pages (backend: {ocr_backend})...")
+    if ocr_backend == "mistral":
+        ocr_results = get_ocr_object_per_page_mistral(pdf_path, images)
+        ocr_results = ocr_results[:len(images)]  # align page count
+    else:
+        ocr_results = get_ocr_object_per_page_paddle(images, ocr_engine)
 
     # Step 2.5: Drop photometric-only pages (contamination guard)
     logging.info("  → Classifying pages and filtering photometric data pages...")

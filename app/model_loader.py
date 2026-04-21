@@ -5,7 +5,7 @@ import pathlib
 from ctypes import CFUNCTYPE, c_int, c_char_p, c_void_p
 from huggingface_hub import hf_hub_download
 from llama_cpp import Llama
-# from paddleocr import PaddleOCR  # replaced by Mistral OCR
+from paddleocr import PaddleOCR
 from config import (
     LLM_FILENAME, LLM_REPO_ID,
     LLM_FILENAME_GPU, LLM_REPO_ID_GPU  # Import GPU versions
@@ -245,24 +245,24 @@ def get_llm_instance(use_gpu=False):
     return llm
 
 
-# def get_ocr_instance():  # PaddleOCR version — replaced by Mistral OCR
-#     global _ocr_instance
-#     if _ocr_instance is None:
-#         logger.info("🔄 Initializing PaddleOCR model...")
-#         try:
-#             _ocr_instance = PaddleOCR(
-#                 lang="en",
-#                 text_detection_model_name="PP-OCRv5_mobile_det",
-#                 text_recognition_model_name="PP-OCRv5_mobile_rec",
-#                 use_doc_orientation_classify=False,
-#                 use_doc_unwarping=False,
-#                 use_textline_orientation=False,
-#                 text_recognition_batch_size=16,
-#             )
-#             logger.info("✓ PaddleOCR initialized successfully")
-#         except Exception as e:
-#             logger.error(f"✗ Failed to initialize PaddleOCR: {e}", exc_info=True)
-#             raise
-#     else:
-#         logger.debug("✓ Returning cached OCR instance")
-#     return _ocr_instance
+def get_ocr_instance():
+    global _ocr_instance
+    if _ocr_instance is None:
+        logger.info("🔄 Initializing PaddleOCR model...")
+        try:
+            _ocr_instance = PaddleOCR(
+                lang="en",
+                text_detection_model_name="PP-OCRv5_mobile_det",
+                text_recognition_model_name="PP-OCRv5_mobile_rec",
+                use_doc_orientation_classify=False,
+                use_doc_unwarping=False,
+                use_textline_orientation=False,
+                text_recognition_batch_size=16,
+            )
+            logger.info("✓ PaddleOCR initialized successfully")
+        except Exception as e:
+            logger.error(f"✗ Failed to initialize PaddleOCR: {e}", exc_info=True)
+            raise
+    else:
+        logger.debug("✓ Returning cached OCR instance")
+    return _ocr_instance
