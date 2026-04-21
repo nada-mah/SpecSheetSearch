@@ -32,9 +32,10 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     logging.info("  → Converting PDF to images...")
     images = convert_pdf_with_pymupdf(pdf_path)
     images = images[:3]   # Limit to first 3 pages for efficiency; adjust as needed
-    # Step 2: OCR (Mistral)
+    # Step 2: OCR (Mistral) — uploads PDF once, all pages returned together
     logging.info("  → Running OCR on all pages (Mistral)...")
-    ocr_results = get_ocr_object_per_page(images)
+    ocr_results = get_ocr_object_per_page(pdf_path, images)
+    ocr_results = ocr_results[:len(images)]  # align page count with images
 
     # Step 2.5: Drop photometric-only pages (contamination guard)
     logging.info("  → Classifying pages and filtering photometric data pages...")

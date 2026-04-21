@@ -3,9 +3,8 @@ import re
 import logging
 # import numpy as np  # only needed by PaddleOCR version
 import os
-import base64
-from io import BytesIO
-from mistralai import Mistral
+from pathlib import Path
+from mistralai.client import Mistral
 
 # Phrases that unambiguously mark a page as photometric test data
 _PHOTOMETRIC_MARKERS = [
@@ -92,39 +91,45 @@ def filter_spec_pages(images, ocr_results):
 #   return ocr_results
 
 
-def get_ocr_object_per_page(images, api_key=None):
+def get_ocr_object_per_page(pdf_path, images, api_key=None):
     """
-    Mistral OCR replacement. Returns the same structure as the PaddleOCR version:
+    Mistral OCR replacement. Uploads the PDF once, gets all pages, returns the
+    same structure as the PaddleOCR version:
       [ [{"rec_texts": [...], "rec_polys": [...], "rec_scores": [...]}], ... ]
 
-    rec_polys are synthetic evenly-spaced horizontal strips sized to the image,
-    so all downstream spatial functions remain compatible.
+    images is required only for deriving per-page pixel dimensions so that the
+    synthetic rec_polys stay in the same coordinate space used by YOLO table
+    detection downstream.
     """
     if api_key is None:
         api_key = os.environ.get("MISTRAL_API_KEY")
 
     client = Mistral(api_key=api_key)
+
+    # Upload PDF and run OCR in one shot
+    pdf_bytes = Path(pdf_path).read_bytes()
+    uploaded = client.files.upload(
+        file={"file_name": Path(pdf_path).name, "content": pdf_bytes},
+        purpose="ocr",
+    )
+    signed_url = client.files.get_signed_url(file_id=uploaded.id, expiry=1)
+    response = client.ocr.process(
+        model="mistral-ocr-latest",
+        document={"type": "document_url", "document_url": signed_url.url},
+    )
+    response_dict = response.model_dump()
+    pages = response_dict.get("pages", [])
+
     ocr_results = []
+    for i, page in enumerate(pages):
+        # Use the corresponding PIL image size if available, else fall back to 1000×1000
+        if i < len(images):
+            w, h = images[i].size
+        else:
+            w, h = 1000, 1000
 
-    for img in images:
-        w, h = img.size
-        buffered = BytesIO()
-        img.save(buffered, format="PNG")
-        img_b64 = base64.b64encode(buffered.getvalue()).decode()
-
-        try:
-            response = client.ocr.process(
-                model="mistral-ocr-latest",
-                document={
-                    "type": "image_url",
-                    "image_url": f"data:image/png;base64,{img_b64}",
-                },
-            )
-            page = response.pages[0] if response.pages else None
-            lines = [l.strip() for l in page.markdown.split("\n") if l.strip()] if page else []
-        except Exception as e:
-            logging.warning(f"Mistral OCR failed for page: {e}")
-            lines = []
+        markdown = page.get("markdown", "")
+        lines = [l.strip() for l in markdown.split("\n") if l.strip()]
 
         n = len(lines)
         if n:
@@ -135,8 +140,7 @@ def get_ocr_object_per_page(images, api_key=None):
             ]
             rec_scores = [1.0] * n
         else:
-            rec_polys = []
-            rec_scores = []
+            rec_polys, rec_scores = [], []
 
         ocr_results.append([{
             "rec_texts": lines,
