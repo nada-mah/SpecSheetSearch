@@ -214,7 +214,7 @@ def get_llm_instance(use_gpu=False):
     logger.info(f"  • n_gpu_layers: {n_gpu_layers} ({'all layers' if n_gpu_layers == -1 else 'CPU only' if n_gpu_layers == 0 else f'{n_gpu_layers} layers'})")
     logger.info(f"  • n_batch: 512")
     logger.info(f"  • n_ctx: 12288")
-    logger.info(f"  • verbose: True (llama.cpp internal logs enabled)")
+    logger.info(f"  • verbose: False")
     logger.info(f"  • GPU backend available: {gpu_available}")
     
     # Initialize the model with verbose=True to capture internal logs via callback
@@ -224,7 +224,7 @@ def get_llm_instance(use_gpu=False):
             n_gpu_layers=n_gpu_layers,
             n_batch=512,
             n_ctx=12288,
-            verbose=True,  # Enables internal llama.cpp logging (captured by our callback)
+            verbose=False,
         )
         logger.info("✓ LLM model loaded successfully")
         
