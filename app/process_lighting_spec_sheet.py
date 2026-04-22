@@ -3,7 +3,7 @@ import logging
 import json
 from  model_loader import get_qwen_model_path, get_yolo_model_path
 from  input_handler import convert_pdf_with_pymupdf
-from ocr import get_ocr_object_per_page_paddle, get_ocr_object_per_page_mistral
+from ocr import get_ocr_object_per_page_paddle  # , get_ocr_object_per_page_mistral
 from  generate_mouting import (
     build_mounting_prompt,
     get_valid_json,
@@ -34,12 +34,11 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     images = images[:3]   # Limit to first 3 pages for efficiency; adjust as needed
 
     # Step 2: OCR
-    logging.info(f"  → Running OCR on all pages (backend: {ocr_backend})...")
-    if ocr_backend == "mistral":
-        ocr_results = get_ocr_object_per_page_mistral(pdf_path, images)
-        ocr_results = ocr_results[:len(images)]  # align page count
-    else:
-        ocr_results = get_ocr_object_per_page_paddle(images, ocr_engine)
+    logging.info("  → Running OCR on all pages...")
+    ocr_results = get_ocr_object_per_page_paddle(images, ocr_engine)
+    # if ocr_backend == "mistral":
+    #     ocr_results = get_ocr_object_per_page_mistral(pdf_path, images)
+    #     ocr_results = ocr_results[:len(images)]  # align page count
 
     # Step 2.5: Drop photometric-only pages (contamination guard)
     logging.info("  → Classifying pages and filtering photometric data pages...")

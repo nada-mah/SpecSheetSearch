@@ -99,8 +99,8 @@ Examples:
                        help="Path to schema JSON file")
     parser.add_argument("--verbose", "-v", action="store_true",
                        help="Enable verbose logging (shows llama.cpp internal logs)")
-    parser.add_argument("--ocr", choices=["paddle", "mistral"], default="paddle",
-                       help="OCR backend to use (default: paddle)")
+    # parser.add_argument("--ocr", choices=["paddle", "mistral"], default="paddle",
+    #                    help="OCR backend to use (default: paddle)")
 
     args = parser.parse_args()
 
@@ -150,12 +150,13 @@ Examples:
     # Warm up models before processing loop
     ocr_engine = None
     try:
-        if args.ocr == "paddle":
-            logger.info("🔄 Warming up OCR engine (PaddleOCR)...")
-            ocr_engine = get_ocr_instance()
-            logger.info("✓ OCR engine ready")
-        else:
-            logger.info("🌐 OCR backend: Mistral (stateless API, no warmup needed)")
+        logger.info("🔄 Warming up OCR engine (PaddleOCR)...")
+        ocr_engine = get_ocr_instance()
+        logger.info("✓ OCR engine ready")
+        # if args.ocr == "paddle":
+        #     ocr_engine = get_ocr_instance()
+        # else:
+        #     logger.info("🌐 OCR backend: Mistral (stateless API, no warmup needed)")
 
         if args.gpu or _VERBOSE_FLAG:
             logger.info("🔄 Warming up LLM (this may take 30-60s on first run)...")
@@ -193,8 +194,8 @@ Examples:
                 schema_path,
                 output_dir=output_dir,
                 use_gpu=args.gpu,
-                ocr_backend=args.ocr,
                 ocr_engine=ocr_engine,
+                # ocr_backend=args.ocr,
             )
 
             filename = os.path.basename(pdf_path)
