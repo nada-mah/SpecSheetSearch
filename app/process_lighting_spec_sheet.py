@@ -113,7 +113,7 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     # Step 5: Build full OCR text
     logging.info("  → Building full OCR text...")
     big_text = build_full_ocr_text(ocr_results)
-    save_ocr_debug(ocr_results, big_text, output_dir, base_name)
+    # save_ocr_debug(ocr_results, big_text, output_dir, base_name)
 
     # Step 6: Match product types
     logging.info("  → Matching product types from OCR text...")
@@ -149,10 +149,13 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     MAX_OCR_CONTEXT_CHARS = _input_token_budget * CHARS_PER_TOKEN 
 
     for key in key_matched:
-        # print(f"\n{'='*60}")
-        # print(f"[DEBUG] Processing key: '{key}'")
-
         expected_output = key_matched[key].get("Expected Output Formatting")
+
+        # Skip LLM extraction for closed-list attributes — refine_by_value_hits
+        # already matches the full predefined values list against big_text.
+        # The prompt-level instruction acts as a fallback if this check is bypassed.
+        if expected_output and "must exactly match" in expected_output.lower():
+            continue
         # print(f"[DEBUG] expected_output: {expected_output}")
 
         ocr_context_lines = build_ocr_context(ocr_key_hit, key)
