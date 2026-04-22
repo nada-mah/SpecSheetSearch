@@ -82,9 +82,13 @@ def filter_spec_pages(images, ocr_results):
 
 
 def get_ocr_object_per_page_paddle(images, ocr_engine):
-    np_images = [np.asarray(img) for img in images]
-    batch_res = ocr_engine.predict(np_images)
-    return [res for res in batch_res if res]
+    ocr_results = []
+    for image in images:
+        np_img = np.asarray(image)
+        res = ocr_engine.predict(np_img)
+        if res:
+            ocr_results.append(res)
+    return ocr_results
 
 
 # def get_ocr_object_per_page_mistral(pdf_path, images, api_key=None):

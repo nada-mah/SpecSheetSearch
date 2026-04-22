@@ -49,7 +49,7 @@ def convert_pdf_with_pymupdf(pdf_path):
     images = []
     for page_number in range(len(doc)):
         page = doc.load_page(page_number)
-        pixmap = page.get_pixmap(dpi=200)
+        pixmap = page.get_pixmap(dpi=300)
 
         # Convert pixmap to a PIL Image object
         img = Image.frombytes("RGB", [pixmap.width, pixmap.height], pixmap.samples)
