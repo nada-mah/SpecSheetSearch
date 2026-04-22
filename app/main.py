@@ -160,7 +160,7 @@ Examples:
 
         if args.gpu or _VERBOSE_FLAG:
             logger.info("🔄 Warming up LLM (this may take 30-60s on first run)...")
-            llm = get_llm_instance(use_gpu=args.gpu)
+            # llm = get_llm_instance(use_gpu=args.gpu)
             logger.info("✓ LLM ready")
     except Exception as e:
         logger.error(f"❌ Failed to initialize models: {e}", exc_info=True)
