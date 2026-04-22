@@ -31,7 +31,7 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     # Step 1: PDF to images
     logging.info("  → Converting PDF to images...")
     images = convert_pdf_with_pymupdf(pdf_path)
-    # images = images[:3]   # Limit to first 3 pages for efficiency; adjust as needed
+    images = images[:3]   # Limit to first 3 pages for efficiency; adjust as needed
 
     # Step 2: OCR
     logging.info("  → Running OCR on all pages...")
