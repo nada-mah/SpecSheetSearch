@@ -257,7 +257,7 @@ def get_ocr_instance():
                 use_doc_orientation_classify=False,
                 use_doc_unwarping=False,
                 use_textline_orientation=False,
-                text_recognition_batch_size=16,
+                text_recognition_batch_size=32,
             )
             logger.info("✓ PaddleOCR initialized successfully")
         except Exception as e:

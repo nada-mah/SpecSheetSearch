@@ -82,13 +82,9 @@ def filter_spec_pages(images, ocr_results):
 
 
 def get_ocr_object_per_page_paddle(images, ocr_engine):
-    ocr_results = []
-    for image in images:
-        np_img = np.asarray(image)
-        res = ocr_engine.predict(np_img)
-        if res:
-            ocr_results.append(res)
-    return ocr_results
+    np_images = [np.asarray(img) for img in images]
+    batch_res = ocr_engine.predict(np_images)
+    return [res for res in batch_res if res]
 
 
 # def get_ocr_object_per_page_mistral(pdf_path, images, api_key=None):
@@ -296,7 +292,7 @@ def match_values_for_keys(
             new_values[val] = is_hit
             if is_hit:
                 any_value_hit = True
-                print(f"[TABLE_HIT] {attr_name} -> '{val}': True")
+                # print(f"[TABLE_HIT] {attr_name} -> '{val}': True")
 
         # 2️⃣ Process Extra Values (only add if matched)
         for extra_val in possible_extras:
