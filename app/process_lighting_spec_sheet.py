@@ -153,6 +153,13 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
                 page_height=float(img_h),
             )
 
+    # if page_markdowns:
+    #     os.makedirs(output_dir, exist_ok=True)
+    #     md_path = os.path.join(output_dir, f"ocr_markdown_{base_name}.md")
+    #     with open(md_path, "w", encoding="utf-8") as f:
+    #         f.write("\n\n---\n\n".join(page_markdowns[pg] for pg in sorted(page_markdowns)))
+    #     logging.info(f"  → OCR markdown saved to: {md_path}")
+
     extra_values_dict = {}
 
     N_CTX = 12288
