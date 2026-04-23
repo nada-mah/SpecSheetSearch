@@ -23,6 +23,7 @@ from  table_handler import (
 from  generate_mouting import generate_llm_response
 from ocr import build_full_ocr_text
 from extract_txt_form_expected import format_row_data_to_markdown, get_value_prompt, build_ocr_context
+from ocr_to_markdown_v2 import ocr_page_to_markdown
 
 def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result", use_gpu=False, ocr_backend="paddle", ocr_engine=None):
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
@@ -134,9 +135,23 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     
     # Step 9.5: gen possible values
     logging.info("  → Generating possible values for keys...")
-    regions_by_page = detect_table_regions_for_key_hits(ocr_key_hit, images)
+    regions_by_page, layout_results, min_page = detect_table_regions_for_key_hits(ocr_key_hit, images)
     filtered_keys = filter_ocr_keys_by_regions(ocr_key_hit, regions_by_page)
     pages, row_for_key_data = extract_candidate_rows_for_keys(filtered_keys, ocr_results)
+
+    # Build structured markdown per key-hit page (reuses already-computed layout)
+    page_markdowns: dict[int, str] = {}
+    if layout_results and min_page is not None:
+        for i, layout_page in enumerate(layout_results):
+            orig_idx = min_page + i
+            ocr_page = ocr_results[orig_idx][0]
+            img_w, img_h = images[orig_idx].size
+            page_markdowns[orig_idx] = ocr_page_to_markdown(
+                ocr_page, layout_page,
+                page_index=orig_idx,
+                page_width=float(img_w),
+                page_height=float(img_h),
+            )
 
     extra_values_dict = {}
 
@@ -159,7 +174,16 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
             continue
         # print(f"[DEBUG] expected_output: {expected_output}")
 
-        ocr_context_lines = build_ocr_context(ocr_key_hit, key)
+        key_pages = sorted({
+            hit["ocr_result_index"] for hit in ocr_key_hit
+            if hit.get("key", "").lower() == key.lower()
+        })
+        if key_pages and any(pg in page_markdowns for pg in key_pages):
+            ocr_context_lines = "\n\n---\n\n".join(
+                page_markdowns[pg] for pg in key_pages if pg in page_markdowns
+            )
+        else:
+            ocr_context_lines = build_ocr_context(ocr_key_hit, key)
         # print(f"[DEBUG] ocr_context_lines ({len(ocr_context_lines)} chars):\n{ocr_context_lines}")
 
         ocr_context_column = []

@@ -55,21 +55,25 @@ def select_pages_for_ocr(pdf_path, min_native_chars=50) -> list[int]:
     selected = []
     for i, page in enumerate(doc):
         text = page.get_text().lower()
+        print(f"text: {text} \n---") 
         char_count = len(text.strip())
         photo_hits = sum(1 for m in _PHOTOMETRIC_MARKERS if m in text)
         spec_hits  = sum(1 for m in _SPEC_MARKERS if m in text)
 
+        print(f"[PAGE_SELECT] page {i+1}: chars={char_count}, photo_hits={photo_hits}, spec_hits={spec_hits}", end=" → ")
+
         if char_count < min_native_chars:
-            # Image-based page — must OCR to get anything
             selected.append(i)
+            print("INCLUDE (image-based)")
         elif photo_hits >= 2 and spec_hits == 0:
-            # Clearly photometric, native text readable — skip
-            logging.info(f"  → Skipping page {i+1} (photometric, native text sufficient).")
+            print("SKIP (photometric)")
         else:
             selected.append(i)
+            print("INCLUDE (spec/mixed)")
 
+    total_pages = len(doc)
     doc.close()
-    logging.info(f"  → Page selector: {len(selected)}/{len(doc)} page(s) queued for OCR: {[p+1 for p in selected]}")
+    print(f"[PAGE_SELECT] total: {len(selected)}/{total_pages} pages selected for OCR: {[p+1 for p in selected]}")
     return selected
 
 

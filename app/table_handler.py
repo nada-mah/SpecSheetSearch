@@ -126,7 +126,7 @@ def detect_table_regions_for_key_hits(filtered_keys,  images):
     """
     # Find which pages contain these hits
     if not filtered_keys:
-        return {}
+        return {}, [], None
 
     # Find which pages contain these hits
     page_indices = {item["ocr_result_index"] for item in filtered_keys}
@@ -156,7 +156,7 @@ def detect_table_regions_for_key_hits(filtered_keys,  images):
             regions_by_page[original_page_idx] = page_tables
 
     logging.debug(f"Detected tables on {len(regions_by_page)} page(s).")
-    return regions_by_page
+    return regions_by_page, layout_results, min_page
 
 def extract_candidate_rows_for_keys(filtered_keys, ocr_results):
     """
