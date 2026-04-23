@@ -55,21 +55,22 @@ def select_pages_for_ocr(pdf_path, min_native_chars=50) -> list[int]:
     selected = []
     for i, page in enumerate(doc):
         text = page.get_text().lower()
-        print(f"text: {text} \n---") 
+        # print(f"text: {text} \n---") 
         char_count = len(text.strip())
         photo_hits = sum(1 for m in _PHOTOMETRIC_MARKERS if m in text)
         spec_hits  = sum(1 for m in _SPEC_MARKERS if m in text)
 
-        print(f"[PAGE_SELECT] page {i+1}: chars={char_count}, photo_hits={photo_hits}, spec_hits={spec_hits}", end=" → ")
+        # print(f"[PAGE_SELECT] page {i+1}: chars={char_count}, photo_hits={photo_hits}, spec_hits={spec_hits}", end=" → ")
 
         if char_count < min_native_chars:
             selected.append(i)
-            print("INCLUDE (image-based)")
+            # print("INCLUDE (image-based)")
         elif photo_hits >= 2 and spec_hits == 0:
-            print("SKIP (photometric)")
+            # print("SKIP (photometric)")
+            pass
         else:
             selected.append(i)
-            print("INCLUDE (spec/mixed)")
+            # print("INCLUDE (spec/mixed)")
 
     total_pages = len(doc)
     doc.close()
