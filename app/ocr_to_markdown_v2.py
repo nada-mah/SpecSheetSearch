@@ -77,7 +77,7 @@ def _assign_tokens(texts, polys, boxes, page_h):
     page_margin_bot = page_h * 0.92
 
     for txt, poly in zip(texts, polys):
-        if not txt or not poly:
+        if not txt or poly is None or len(poly) == 0:
             continue
         tok = _token_from(txt, poly)
         cx, cy = tok["cx"], tok["cy"]
@@ -301,9 +301,9 @@ def _render_plain_table(tokens, page_w):
         else:
             clusters.append([v])
     min_sup = max(1, int(len(rows) * 0.2))
-    col_centers = [sum(c) / len(c) for c in clusters if len(c) >= min_sup]
+    col_centers = [sum(float(v) for v in c) / len(c) for c in clusters if len(c) >= min_sup]
     if not col_centers:
-        col_centers = [sum(clusters[0]) / len(clusters[0])]
+        col_centers = [sum(float(v) for v in clusters[0]) / len(clusters[0])]
     n = len(col_centers)
 
     def nc(tok):
