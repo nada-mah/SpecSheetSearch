@@ -2,6 +2,7 @@ from paddleocr import PaddleOCR
 import re
 import logging
 import numpy as np
+import fitz
 # import os
 # from pathlib import Path
 # from mistralai.client import Mistral
@@ -38,6 +39,39 @@ _SPEC_MARKERS = [
     "warranty",
     "finish",
 ]
+
+def select_pages_for_ocr(pdf_path, min_native_chars=50) -> list[int]:
+    """
+    Return indices of pages that should be OCR'd.
+
+    A page is included if:
+    - it has fewer than min_native_chars of native text (image-based), OR
+    - its native text contains at least one spec marker
+
+    A page is skipped if native text is rich AND dominated by photometric
+    markers with no spec markers present.
+    """
+    doc = fitz.open(pdf_path)
+    selected = []
+    for i, page in enumerate(doc):
+        text = page.get_text().lower()
+        char_count = len(text.strip())
+        photo_hits = sum(1 for m in _PHOTOMETRIC_MARKERS if m in text)
+        spec_hits  = sum(1 for m in _SPEC_MARKERS if m in text)
+
+        if char_count < min_native_chars:
+            # Image-based page — must OCR to get anything
+            selected.append(i)
+        elif photo_hits >= 2 and spec_hits == 0:
+            # Clearly photometric, native text readable — skip
+            logging.info(f"  → Skipping page {i+1} (photometric, native text sufficient).")
+        else:
+            selected.append(i)
+
+    doc.close()
+    logging.info(f"  → Page selector: {len(selected)}/{len(doc)} page(s) queued for OCR: {[p+1 for p in selected]}")
+    return selected
+
 
 def classify_page_content(page_ocr_result) -> str:
     """

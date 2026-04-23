@@ -9,7 +9,7 @@ from  generate_mouting import (
     get_valid_json,
     load_schema_and_derive_product_types,)
 from  input_handler import save_final_result, merge_match_results, save_ocr_debug
-from  ocr import build_full_ocr_text, filter_ocr_key_hit_by_value_matched, filter_ocr_keys_by_regions, match_values_for_keys, filter_spec_pages
+from  ocr import build_full_ocr_text, filter_ocr_key_hit_by_value_matched, filter_ocr_keys_by_regions, match_values_for_keys, filter_spec_pages, select_pages_for_ocr
 from  serching import (
     match_product_types_via_lookup,
     split_schema_by_product_type_match, 
@@ -28,13 +28,14 @@ def process_lighting_spec_sheet(pdf_path, schema_path, output_dir="final_result"
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     logging.info(f"📄 Processing spec sheet: {base_name}.pdf")
 
-    # Step 1: PDF to images
-    logging.info("  → Converting PDF to images...")
-    images = convert_pdf_with_pymupdf(pdf_path)
-    images = images[:3]   # Limit to first 3 pages for efficiency; adjust as needed
+    # Step 1: Select pages that need OCR, then render only those
+    logging.info("  → Selecting pages for OCR...")
+    page_indices = select_pages_for_ocr(pdf_path)
+    all_images = convert_pdf_with_pymupdf(pdf_path)
+    images = [all_images[i] for i in page_indices]
 
     # Step 2: OCR
-    logging.info("  → Running OCR on all pages...")
+    logging.info("  → Running OCR on selected pages...")
     ocr_results = get_ocr_object_per_page_paddle(images, ocr_engine)
     # if ocr_backend == "mistral":
     #     ocr_results = get_ocr_object_per_page_mistral(pdf_path, images)
